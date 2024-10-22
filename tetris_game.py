@@ -1,129 +1,271 @@
+# Leverage the code from github repository: https://github.com/tucna/Programming-Basic-Concepts
+# Utilize concepts from the follwoing video: https://www.youtube.com/watch?v=gIjVwODrXC8
+
+import pygame
 import random
-import numpy as np
 
-# Include any constants used by the class
-BOARD_WIDTH = 10
-BOARD_HEIGHT = 20
+# Initialize Pygame
+pygame.init()
 
-class TetrisGame:
-    def __init__(self, width=BOARD_WIDTH, height=BOARD_HEIGHT):
-        self.board = TetrisBoard(width, height)
-        self.current_piece = None
-        self.next_piece = None
-        self.score = 0
-        self.game_over = False
-        self.level = 0
+# Define colors using RGB tuples
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+CYAN = (0, 255, 255)
+YELLOW = (255, 255, 0)
+MAGENTA = (255, 0, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+ORANGE = (255, 165, 0)
+GRAY = (128, 128, 128)  # Color for the border
 
-    def _generate_piece(self):
-        # use TetrisPeice to pick out a random peice from 1-7
-        pass
+# Game dimensions
+BLOCK_SIZE = 30  # Size of each tetromino block in pixels
+GRID_WIDTH = 10  # Number of columns in the game grid
+GRID_HEIGHT = 20  # Number of rows in the game grid
+BORDER_WIDTH = 4  # Width of the border around the game area in pixels
+SCREEN_WIDTH = BLOCK_SIZE * GRID_WIDTH + BORDER_WIDTH * 2 + 200  # Total screen width, including space for score
+SCREEN_HEIGHT = BLOCK_SIZE * GRID_HEIGHT + BORDER_WIDTH  # Total screen height
 
-    def move(self, column, rotation):
-        # Drop the peice in the board
-        pass
+# Define tetromino shapes using 2D lists
+# Each sublist represents a row, and 1 indicates a filled block
+SHAPES = [
+    [[1, 1, 1, 1]],  # I-shape
+    [[1, 1], [1, 1]],  # O-shape
+    [[1, 1, 1], [0, 1, 0]],  # T-shape
+    [[1, 1, 1], [1, 0, 0]],  # L-shape
+    [[1, 1, 1], [0, 0, 1]],  # J-shape
+    [[1, 1, 0], [0, 1, 1]],  # S-shape
+    [[0, 1, 1], [1, 1, 0]]  # Z-shape
+]
 
-    def _calculate_score(self, lines_cleared):
-        # basic scoring implementation
-        if lines_cleared == 1:
-            return 100 * self.level
-        elif lines_cleared == 2:
-            return 300 * self.level
-        elif lines_cleared == 3:
-            return 500 * self.level
-        elif lines_cleared == 4:
-            return 800 * self.level
-        return 0
+# Colors for each tetromino shape
+COLORS = [CYAN, YELLOW, MAGENTA, RED, GREEN, BLUE, ORANGE]
 
-    def get_state(self):
-        return {
-            'board': self.board.get_state(),
-            'current_piece': self.current_piece.shape if self.current_piece else None,
-            'next_piece': self.next_piece.shape if self.next_piece else None,
-            'score': self.score,
-            'game_over': self.game_over,
-            'level': self.level
-        }
-    
-class TetrisBoard:
-    def __init__(self, width=BOARD_WIDTH, height=BOARD_HEIGHT):
-        self.width = width
-        self.height = height
-        self.grid = np.zeros((height, width), dtype=int)
-        self.current_piece = None
-
-    def place_piece(self, piece, column, orentation):
-        # Place a peice given a column and orientation
-        pass
-        
-    def is_valid(self):
-        # Return true if board is valid
-        # May not need
-        pass
-
-    def clear_line(self):
-        # Clear the row and move all higher rows down
-        # Add an empty row to the top
-        pass
-
-    def is_game_over(self):
-        # Check if the game is over, e.g. a peice 
-        # is above the bounds of the game board
-        pass
-
-    def get_state(self):
-        # return the state of the gameboard as a binary occupancy grid
-        pass
-
-    def __str__(self):
-        # print the game board out to a string representation
-        pass
-    
-    def step(self, action):
-        # Allows the agent to take an action and affect the state of the game
-        pass
-
-    def reward(self, lines_cleared):
-        # analyze the board and determine a score
-        # passing the number of lines cleared to assist...?
-        # Use the difference in the current score and the previous score...?
-        pass
-
-class TetrisPeice:
+class Tetris:
     def __init__(self):
-        self.current_piece = self.random_piece()
+        # Set up the game window
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        pygame.display.set_caption("Tetris")
+        
+        # Create a clock object to control the game's framerate
+        self.clock = pygame.time.Clock()
+        
+        # Initialize the game grid (0 represents empty cells)
+        self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
+        
+        # Create the first tetromino piece
+        self.current_piece = self.new_piece()
+        
+        # Game state variables
+        self.game_over = False
+        self.score = 0
+        
+        # Set up font for rendering text
+        self.font = pygame.font.Font(None, 36)
+        
+        # Set up delay for continuous movement
+        self.move_delay = 100  # Delay in milliseconds
+        self.last_move_time = {pygame.K_LEFT: 0, pygame.K_RIGHT: 0, pygame.K_DOWN: 0}
 
-    def random_piece(self):
-        # use a rng and create a peice
-        pass
+    def new_piece(self):
+        # Randomly select a shape and its corresponding color
+        shape = random.choice(SHAPES)
+        color = COLORS[SHAPES.index(shape)]
+        
+        # Return a dictionary representing the new piece
+        return {
+            'shape': shape,
+            'color': color,
+            'x': GRID_WIDTH // 2 - len(shape[0]) // 2,  # Center the piece horizontally
+            'y': 0  # Start at the top of the grid
+        }
 
-    def rotate(self, peice_type, num_rotations):
-        # return the new peice after a set amount of rotations
-        pass
+    def valid_move(self, piece, x, y):
+        # Check if the piece can be placed at the given position
+        for i, row in enumerate(piece['shape']):
+            for j, cell in enumerate(row):
+                if cell:
+                    if (x + j < 0 or x + j >= GRID_WIDTH or  # Check horizontal boundaries
+                        y + i >= GRID_HEIGHT or  # Check bottom boundary
+                        (y + i >= 0 and self.grid[y + i][x + j])):  # Check collision with placed pieces
+                        return False
+        return True
 
+    def place_piece(self, piece):
+        # Place the piece on the grid
+        for i, row in enumerate(piece['shape']):
+            for j, cell in enumerate(row):
+                if cell:
+                    self.grid[piece['y'] + i][piece['x'] + j] = piece['color']
 
-def main():
-    game = TetrisGame()
-    peices_played = 0
-    while not game.game_over:
-        peices_played += 1
-        print(f"Score: {game.score}")
-        print(game.board)
-        print(f"Next piece: {game.next_piece.shape_name}")
+    def remove_full_rows(self):
+        # Identify and remove full rows, then add new empty rows at the top
+        full_rows = [i for i, row in enumerate(self.grid) if all(row)]
+        for row in full_rows:
+            del self.grid[row]
+            self.grid.insert(0, [0 for _ in range(GRID_WIDTH)])
+        return len(full_rows)  # Return the number of rows removed
 
+    def rotate_piece(self, piece):
+        # Rotate the piece 90 degrees clockwise
+        return {
+            'shape': list(zip(*reversed(piece['shape']))),  # Transpose and reverse the shape matrix
+            'color': piece['color'],
+            'x': piece['x'],
+            'y': piece['y']
+        }
 
-        column = input("Enter the column 1:10: ").strip().upper()
-        orientation = input("Enter the orientation 1:4: ").strip().upper()
+    def draw_border(self):
+        # Draw the border around the game area
+        pygame.draw.rect(self.screen, GRAY, (0, 0, SCREEN_WIDTH - 200, SCREEN_HEIGHT), BORDER_WIDTH)
 
-        if peices_played == 10:
-            # increase the level every 10 peices played
-            game.level += 1
-            peices_played = 0
-            
+    def draw(self):
+        # Clear the screen
+        self.screen.fill(BLACK)
+        
+        # Draw the border
+        self.draw_border()
 
+        # Draw the placed pieces on the grid
+        for y, row in enumerate(self.grid):
+            for x, color in enumerate(row):
+                if color:
+                    pygame.draw.rect(self.screen, color, 
+                                     (x * BLOCK_SIZE + BORDER_WIDTH, 
+                                      y * BLOCK_SIZE, 
+                                      BLOCK_SIZE - 1, BLOCK_SIZE - 1))
 
-    # The game is now over
-    print("Game Over!")
-    print(f"Final Score: {game.score}")
+        # Draw the current falling piece
+        for i, row in enumerate(self.current_piece['shape']):
+            for j, cell in enumerate(row):
+                if cell:
+                    pygame.draw.rect(self.screen, self.current_piece['color'],
+                                     ((self.current_piece['x'] + j) * BLOCK_SIZE + BORDER_WIDTH,
+                                      (self.current_piece['y'] + i) * BLOCK_SIZE,
+                                      BLOCK_SIZE - 1, BLOCK_SIZE - 1))
+
+        # Draw the score
+        score_text = self.font.render(f"Score: {self.score}", True, WHITE)
+        self.screen.blit(score_text, (SCREEN_WIDTH - 190, 10))
+
+        # Draw game over message if the game has ended
+        if self.game_over:
+            game_over_text = self.font.render("GAME OVER", True, WHITE)
+            self.screen.blit(game_over_text, (SCREEN_WIDTH // 2 - 70, SCREEN_HEIGHT // 2))
+
+        # Update the display
+        pygame.display.flip()
+
+    def handle_continuous_movement(self):
+        # Handle continuous key presses for smoother movement
+        keys = pygame.key.get_pressed()
+        current_time = pygame.time.get_ticks()
+
+        # Move left
+        if keys[pygame.K_LEFT] and current_time - self.last_move_time[pygame.K_LEFT] > self.move_delay:
+            if self.valid_move(self.current_piece, self.current_piece['x'] - 1, self.current_piece['y']):
+                self.current_piece['x'] -= 1
+                self.last_move_time[pygame.K_LEFT] = current_time
+
+        # Move right
+        if keys[pygame.K_RIGHT] and current_time - self.last_move_time[pygame.K_RIGHT] > self.move_delay:
+            if self.valid_move(self.current_piece, self.current_piece['x'] + 1, self.current_piece['y']):
+                self.current_piece['x'] += 1
+                self.last_move_time[pygame.K_RIGHT] = current_time
+
+        # Move down
+        if keys[pygame.K_DOWN] and current_time - self.last_move_time[pygame.K_DOWN] > self.move_delay:
+            if self.valid_move(self.current_piece, self.current_piece['x'], self.current_piece['y'] + 1):
+                self.current_piece['y'] += 1
+                self.last_move_time[pygame.K_DOWN] = current_time
+
+    def run(self):
+        fall_time = 0
+        fall_speed = 0.5  # Time in seconds before the piece falls one block
+        
+        while not self.game_over:
+            fall_time += self.clock.get_rawtime()
+            self.clock.tick()
+
+            # Handle Pygame events
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_UP:
+                        # Rotate the piece if it's a valid move
+                        rotated_piece = self.rotate_piece(self.current_piece)
+                        if self.valid_move(rotated_piece, rotated_piece['x'], rotated_piece['y']):
+                            self.current_piece = rotated_piece
+
+            # Handle continuous movement (left, right, down)
+            self.handle_continuous_movement()
+
+            # Make the piece fall
+            if fall_time / 1000 > fall_speed:
+                if self.valid_move(self.current_piece, self.current_piece['x'], self.current_piece['y'] + 1):
+                    self.current_piece['y'] += 1
+                else:
+                    # If the piece can't move down, place it and create a new piece
+                    self.place_piece(self.current_piece)
+                    rows_cleared = self.remove_full_rows()
+                    self.score += rows_cleared * 100  # Increase score for cleared rows
+                    self.current_piece = self.new_piece()
+                    
+                    # Check for game over
+                    if not self.valid_move(self.current_piece, self.current_piece['x'], self.current_piece['y']):
+                        self.game_over = True
+                
+                fall_time = 0  # Reset fall time
+
+            # Draw the game state
+            self.draw()
+
+    def step(self, action, state):
+        # the step function will be all of the time from the new peice starting at the top, then falling all the way and lines clearing as neccesary.
+
+        num_rotations, num_movements = action
+
+        # Rotate the piece based on the number of rotations
+        for _ in range(num_rotations):
+            rotated_piece = self.rotate_piece(self.current_piece)
+            if self.valid_move(rotated_piece, rotated_piece['x'], rotated_piece['y']):
+               self.current_piece = rotated_piece
+
+        # Move left or right based on num_movements
+        if num_movements != 0:
+            direction = 1 if num_movements > 0 else -1
+            for _ in range(abs(num_movements)):
+                new_x = self.current_piece['x'] + direction
+                if self.valid_move(self.current_piece, self.current_piece['x'] + direction, self.current_piece['y']):
+                    self.current_piece['x'] += direction
+                else:
+                    # Stop moving if the next move is not valid
+                    break
+
+        # Move the peice down until it cant move anymore
+        can_fall = True
+        while can_fall:
+            if self.valid_move(self.current_piece, self.current_piece['x'], self.current_piece['y'] + 1):
+                self.current_piece['y'] += 1
+            else:
+                can_fall = False
+                # If the piece can't move down, place it and create a new piece
+                self.place_piece(self.current_piece)
+                rows_cleared = self.remove_full_rows()
+                self.score += rows_cleared * 100  # Increase score for cleared rows
+                self.current_piece = self.new_piece()
+
+                # Check for game over
+                if not self.valid_move(self.current_piece, self.current_piece['x'], self.current_piece['y']):
+                    done = True
+
+        next_state = state
+        reward = self.score
+        return next_state, reward, done
 
 if __name__ == "__main__":
-    main()
+    game = Tetris()
+    game.run()
+    pygame.quit()
