@@ -1,6 +1,7 @@
 # Leverage the code from github repository: https://github.com/tucna/Programming-Basic-Concepts
 # Utilize concepts from the follwoing video: https://www.youtube.com/watch?v=gIjVwODrXC8
 
+import numpy as np
 import pygame
 import random
 
@@ -225,7 +226,8 @@ class Tetris:
     def step(self, action, state):
         # the step function will be all of the time from the new peice starting at the top, then falling all the way and lines clearing as neccesary.
 
-        num_rotations, num_movements = action
+        num_rotations, num_movements = action # unpack the action
+        done = False # initialize done
 
         # Rotate the piece based on the number of rotations
         for _ in range(num_rotations):
@@ -242,6 +244,7 @@ class Tetris:
                     self.current_piece['x'] += direction
                 else:
                     # Stop moving if the next move is not valid
+                    # add penalty?
                     break
 
         # Move the peice down until it cant move anymore
@@ -261,9 +264,50 @@ class Tetris:
                 if not self.valid_move(self.current_piece, self.current_piece['x'], self.current_piece['y']):
                     done = True
 
-        next_state = state
-        reward = self.score
+        # Convert the peice number to a NumPy array
+        number_array = np.array([SHAPES.index(self.current_piece)])
+        # Concatenate the number and the flattened grid
+        concatenated_array = np.concatenate((number_array, self.grid.flatten()))
+
+        next_state = concatenated_array
+        reward = self.score # to do: implement a function
         return next_state, reward, done
+    
+    def reset(self):
+        # reset function is like an init function
+        # Set up the game window
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        pygame.display.set_caption("Tetris")
+        
+        # Create a clock object to control the game's framerate
+        self.clock = pygame.time.Clock()
+        
+        # Initialize the game grid (0 represents empty cells)
+        self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
+        
+        # Create the first tetromino piece
+        self.current_piece = self.new_piece()
+        
+        # Game state variables
+        self.game_over = False
+        self.score = 0
+        
+        # Set up font for rendering text
+        self.font = pygame.font.Font(None, 36)
+        
+        # Set up delay for continuous movement
+        self.move_delay = 100  # Delay in milliseconds
+        self.last_move_time = {pygame.K_LEFT: 0, pygame.K_RIGHT: 0, pygame.K_DOWN: 0}
+
+    def render(self):
+        # create a render function to draw the board when desired
+        self.draw()
+
+    def get_action_range(self):
+        return (0, 3), (-5, 5)
+    
+    def get_num_actions(self):
+        return 2
 
 if __name__ == "__main__":
     game = Tetris()
