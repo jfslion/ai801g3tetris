@@ -9,16 +9,12 @@ class RLTetrisEnv(Tetris):
     def __init__(self):
         super().__init__()
         # Define action and observation spaces if needed for RL algorithms
-        self.action_space = spaces.Tuple((
-            spaces.Discrete(4),  # 0 to 3
-            spaces.Discrete(11)  # -5 to 5 (11 possible values)
-        ))
+        self.action_space = spaces.Discrete(44)
 
     def step(self, action):
         # the step function will be all of the time from the new peice starting at the top, then falling all the way and lines clearing as neccesary.
 
-        num_rotations, num_movements = action # unpack the action
-        num_movements -= 5
+        num_rotations, num_movements = convert_to_action(action) # unpack the action
         done = False # initialize done
 
         # Rotate the piece based on the number of rotations
@@ -80,7 +76,8 @@ class RLTetrisEnv(Tetris):
 
         # include additional info
         info = ""
-        return next_state, reward, done, info
+        truncated = False
+        return next_state, reward, done, truncated, info
     
     def reset(self):
         # reset function is like an init function
@@ -107,6 +104,21 @@ class RLTetrisEnv(Tetris):
         # Set up delay for continuous movement
         self.move_delay = 100  # Delay in milliseconds
         self.last_move_time = {pygame.K_LEFT: 0, pygame.K_RIGHT: 0, pygame.K_DOWN: 0}
+
+        # flatten the grid
+        binary_grid = convert_to_binary(self.grid)
+        flattened_grid = [float(item) for row in binary_grid for item in row]
+        # Convert the peice number to a NumPy array
+        next_shape_enum = [SHAPES.index(self.current_piece['shape'])]
+        # add the peice enum to the grid
+        state = flattened_grid + [float(next_shape_enum[0])]
+        state_array = np.array(state, dtype=np.float32)
+
+        next_state = state_array
+
+        info = ""
+
+        return next_state, info
 
     def render(self):
         # create a render function to draw the board when desired
@@ -136,6 +148,18 @@ def calculate_average_height(grid):
     
     return sum(heights) / width
 
+def convert_to_action(n):
+    if not 0 <= n <= 43:
+        raise ValueError("Input must be between 0 and 43 inclusive")
+    
+    # First number (0 to 3)
+    first = n // 11
+    
+    # Second number (-5 to 5)
+    second = n % 11 - 5
+    
+    return first, second
+
 
 def calculate_highest_height(grid):
     width = len(grid[0])
@@ -146,7 +170,6 @@ def calculate_highest_height(grid):
             if grid[row][col] == 1:
                 heights[col] = len(grid) - row
                 break
-    
     return max(heights)
 
 # Example usage of RLTetrisEnv
@@ -155,12 +178,10 @@ if __name__ == "__main__":
     
     done = False
     env.reset()
-    env.render()
-
     
     while not done:
-        action = [np.random.randint(0, 3), np.random.randint(0, 11)]
-        observation, reward, done, _ = env.step(action)
-        env.render()
-        time.sleep(0.5)  # Pauses for 1 second        
+        action = np.random.randint(0, 43)
+        observation, reward, done, _, _ = env.step(action)
+        # env.render()
+        # time.sleep(3)  # Pauses for 1 second        
         print(f"Action: {action}, Reward: {reward}, Done: {done}")
