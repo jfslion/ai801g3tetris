@@ -398,8 +398,7 @@ if __name__ == "__main__":
 
 
     if USER:
-        # env.run_with_reward()
-        print("done")
+        env.run_with_reward()
     else:
         while not done:
             action = np.random.randint(0, 43)
