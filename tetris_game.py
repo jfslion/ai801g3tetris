@@ -25,7 +25,8 @@ BLOCK_SIZE = 30  # Size of each tetromino block in pixels
 GRID_WIDTH = 10  # Number of columns in the game grid
 GRID_HEIGHT = 20  # Number of rows in the game grid
 BORDER_WIDTH = 4  # Width of the border around the game area in pixels
-SCREEN_WIDTH = BLOCK_SIZE * GRID_WIDTH + BORDER_WIDTH * 2 + 200  # Total screen width, including space for score
+SCREEN_WIDTH = BLOCK_SIZE * GRID_WIDTH + BORDER_WIDTH * \
+    2 + 200  # Total screen width, including space for score
 SCREEN_HEIGHT = BLOCK_SIZE * GRID_HEIGHT + BORDER_WIDTH  # Total screen height
 
 # Define tetromino shapes using 2D lists
@@ -43,44 +44,66 @@ SHAPES = [
 # Colors for each tetromino shape
 COLORS = [CYAN, YELLOW, MAGENTA, RED, GREEN, BLUE, ORANGE]
 
+PRINT_REWARD = True
+
+
 class Tetris:
     def __init__(self):
         # Set up the game window
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Tetris")
-        
+
         # Create a clock object to control the game's framerate
         self.clock = pygame.time.Clock()
-        
+
         # Initialize the game grid (0 represents empty cells)
-        self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
-        
+        self.grid = [[0 for _ in range(GRID_WIDTH)]
+                     for _ in range(GRID_HEIGHT)]
+
         # Create the first tetromino piece
         self.current_piece = self.new_piece()
-        
+
         # Game state variables
         self.game_over = False
         self.score = 0
-        
+
         # Set up font for rendering text
         self.font = pygame.font.Font(None, 36)
-        
+
         # Set up delay for continuous movement
         self.move_delay = 100  # Delay in milliseconds
-        self.last_move_time = {pygame.K_LEFT: 0, pygame.K_RIGHT: 0, pygame.K_DOWN: 0}
+        self.last_move_time = {pygame.K_LEFT: 0,
+                               pygame.K_RIGHT: 0, pygame.K_DOWN: 0}
 
     def new_piece(self):
         # Randomly select a shape and its corresponding color
         shape = random.choice(SHAPES)
         color = COLORS[SHAPES.index(shape)]
-        
+
         # Return a dictionary representing the new piece
         return {
             'shape': shape,
             'color': color,
-            'x': GRID_WIDTH // 2 - len(shape[0]) // 2,  # Center the piece horizontally
+            # Center the piece horizontally
+            'x': GRID_WIDTH // 2 - len(shape[0]) // 2,
             'y': 0  # Start at the top of the grid
         }
+
+    def calculate_game_score(self, lines_cleared):
+
+        if lines_cleared == 0:
+            return 0
+
+        points = {
+            1: 40,    # Single
+            2: 100,   # Double
+            3: 300,   # Triple
+            4: 1200   # Tetris
+        }
+
+    # Calculate score for this turn
+        score = points[lines_cleared]
+        return score
 
     def valid_move(self, piece, x, y):
         # Check if the piece can be placed at the given position
@@ -89,7 +112,8 @@ class Tetris:
                 if cell:
                     if (x + j < 0 or x + j >= GRID_WIDTH or  # Check horizontal boundaries
                         y + i >= GRID_HEIGHT or  # Check bottom boundary
-                        (y + i >= 0 and self.grid[y + i][x + j])):  # Check collision with placed pieces
+                            # Check collision with placed pieces
+                            (y + i >= 0 and self.grid[y + i][x + j])):
                         return False
         return True
 
@@ -111,7 +135,8 @@ class Tetris:
     def rotate_piece(self, piece):
         # Rotate the piece 90 degrees clockwise
         return {
-            'shape': list(zip(*reversed(piece['shape']))),  # Transpose and reverse the shape matrix
+            # Transpose and reverse the shape matrix
+            'shape': list(zip(*reversed(piece['shape']))),
             'color': piece['color'],
             'x': piece['x'],
             'y': piece['y']
@@ -119,12 +144,13 @@ class Tetris:
 
     def draw_border(self):
         # Draw the border around the game area
-        pygame.draw.rect(self.screen, GRAY, (0, 0, SCREEN_WIDTH - 200, SCREEN_HEIGHT), BORDER_WIDTH)
+        pygame.draw.rect(
+            self.screen, GRAY, (0, 0, SCREEN_WIDTH - 200, SCREEN_HEIGHT), BORDER_WIDTH)
 
     def draw(self):
         # Clear the screen
         self.screen.fill(BLACK)
-        
+
         # Draw the border
         self.draw_border()
 
@@ -132,9 +158,9 @@ class Tetris:
         for y, row in enumerate(self.grid):
             for x, color in enumerate(row):
                 if color:
-                    pygame.draw.rect(self.screen, color, 
-                                     (x * BLOCK_SIZE + BORDER_WIDTH, 
-                                      y * BLOCK_SIZE, 
+                    pygame.draw.rect(self.screen, color,
+                                     (x * BLOCK_SIZE + BORDER_WIDTH,
+                                      y * BLOCK_SIZE,
                                       BLOCK_SIZE - 1, BLOCK_SIZE - 1))
 
         # Draw the current falling piece
@@ -143,7 +169,8 @@ class Tetris:
                 if cell:
                     pygame.draw.rect(self.screen, self.current_piece['color'],
                                      ((self.current_piece['x'] + j) * BLOCK_SIZE + BORDER_WIDTH,
-                                      (self.current_piece['y'] + i) * BLOCK_SIZE,
+                                      (self.current_piece['y'] +
+                                       i) * BLOCK_SIZE,
                                       BLOCK_SIZE - 1, BLOCK_SIZE - 1))
 
         # Draw the score
@@ -153,7 +180,8 @@ class Tetris:
         # Draw game over message if the game has ended
         if self.game_over:
             game_over_text = self.font.render("GAME OVER", True, WHITE)
-            self.screen.blit(game_over_text, (SCREEN_WIDTH // 2 - 70, SCREEN_HEIGHT // 2))
+            self.screen.blit(game_over_text, (SCREEN_WIDTH //
+                             2 - 70, SCREEN_HEIGHT // 2))
 
         # Update the display
         pygame.display.flip()
@@ -184,7 +212,7 @@ class Tetris:
     def run(self):
         fall_time = 0
         fall_speed = 0.5  # Time in seconds before the piece falls one block
-        
+
         while not self.game_over:
             fall_time += self.clock.get_rawtime()
             self.clock.tick()
@@ -211,13 +239,14 @@ class Tetris:
                     # If the piece can't move down, place it and create a new piece
                     self.place_piece(self.current_piece)
                     rows_cleared = self.remove_full_rows()
-                    self.score += rows_cleared * 100  # Increase score for cleared rows
+                    # Increase score for cleared rows
+                    self.score += self.calculate_game_score(rows_cleared)
                     self.current_piece = self.new_piece()
-                    
+
                     # Check for game over
                     if not self.valid_move(self.current_piece, self.current_piece['x'], self.current_piece['y']):
                         self.game_over = True
-                
+
                 fall_time = 0  # Reset fall time
 
             # Draw the game state
