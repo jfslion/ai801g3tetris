@@ -6,6 +6,7 @@ import gymnasium as gym
 from gymnasium import spaces
 
 USER = True
+PRINT_REWARD_CALCULATIONS = False
 
 
 class RLTetrisEnv(Tetris):
@@ -17,7 +18,8 @@ class RLTetrisEnv(Tetris):
     def step(self, action):
         # the step function will be all of the time from the new peice starting at the top, then falling all the way and lines clearing as neccesary.
 
-        num_rotations, num_movements = convert_to_action(action)  # unpack the action
+        num_rotations, num_movements = convert_to_action(
+            action)  # unpack the action
         done = False  # initialize done
 
         # flatten the grid
@@ -81,7 +83,8 @@ class RLTetrisEnv(Tetris):
         next_state = np.array(state, dtype=np.float32)
 
         # reward function
-        reward = calculate_reward(previous_board, board_before_clears, new_board, rows_cleared)
+        reward = calculate_reward(
+            previous_board, board_before_clears, new_board, rows_cleared)
 
         # end the game if the socre gets high enough
         if self.score > 400000:
@@ -138,7 +141,7 @@ class RLTetrisEnv(Tetris):
         info = ""
 
         return next_state, info
-    
+
     def run_with_reward(self):
         fall_time = 0
         fall_speed = 0.5  # Time in seconds before the piece falls one block
@@ -178,7 +181,8 @@ class RLTetrisEnv(Tetris):
                     # update the boards and calc the reward
                     previous_board = new_board
                     new_board = convert_to_binary(self.grid)
-                    reward = calculate_reward(previous_board, board_before_clears, new_board, rows_cleared)
+                    reward = calculate_reward(
+                        previous_board, board_before_clears, new_board, rows_cleared)
                     print("Reward:")
                     print(reward)
 
@@ -203,46 +207,60 @@ class RLTetrisEnv(Tetris):
 
 # --------------HELPER FUNCTIONS--------------------------
 
-def calculate_reward(previous_binary, before_clears_binary, new_binary, lines_cleared):
+def calculate_reward(previous_grid, grid_before_line_clears, new_grid, lines_cleared):
 
     # initialize the reward
     reward = 0
 
+    # show what the reward function is dealing with
+    # print("Previous Board")
+    # print(previous_grid)
+    # print("Board Before Clears")
+    # print(grid_before_line_clears)
+
     # add increasing reward for each block i the same column
     # e.g. a horizontal I might yeild 8+7+6+5 if the row aleardy contained 4 filled blocks.
-    _, _, cumulative_sums = count_new_blocks(previous_binary, before_clears_binary)
-    reward += np.sum(cumulative_sums)
+    # _, _, cumulative_sums = count_new_blocks(previous_grid, grid_before_line_clears)
+    # reward += np.sum(cumulative_sums)
 
     # add a qudratic reward for clearing lines to incentivize combos
     reward += 10 * lines_cleared ** 2
     # 10, 40, 90, 160
 
     # reward based on placing peices that minimize unoccupied edges
-    '''
-    unoccupied_edges = calculate_edge_reward(previous_binary, before_clears_binary)
-    if len(unoccupied_edges) < 1:
-        reward += 0 # this shouldnt be possible
-    else:
-        reward += 10/len(unoccupied_edges)
-        '''
+    # unoccupied_edges = calculate_edge_reward(previous_grid, grid_before_line_clears)
+    # if len(unoccupied_edges) < 1:
+    #     reward += 0 # this shouldnt be possible
+    # else:
+    #     reward += 10/len(unoccupied_edges)
 
     # encourage keeping the max column height low
-    # max_column_height = calculate_highest_height(new_binary)
-    # reward += 5 / max(max_column_height, 0.1) # dont divide by 0
+    max_column_height = calculate_highest_height(new_grid)
+    reward -= max_column_height
+
+    # count the number of spaces the agent can't fill
+    num_holes = calculate_unreachable_spaces(new_grid)
+    reward -= num_holes
 
     # encourage keeping the average column height low
-    # avg_column_height = self.calculate_average_height(new_binary)
-    # reward += 5 / avg_column_height
+    # avg_column_height = calculate_average_height(new_binary)
+    # reward -= avg_column_height
 
-    # encourage filling all holes
-    # unreachable_spaces = self.calculate_unreachable_spaces(new_binary)
-    # reward += 5 / unreachable_spaces
+    # minimize the height difference across rows
+    bumpiness = calculate_bumpiness(new_grid)
+    reward -= bumpiness
+
     reward = np.float32(reward)
 
     return reward
 
+# ----------------------------------------------------
+
 
 def convert_to_binary(grid):
+    # since the tetris board holds color information in the location of a peice,
+    # convert each color to an occupied bit for simplicity of calculations
+
     def cell_to_binary(cell):
         if isinstance(cell, tuple):
             # If any RGB value is non-zero, consider it occupied
@@ -251,8 +269,13 @@ def convert_to_binary(grid):
 
     return [[cell_to_binary(cell) for cell in row] for row in grid]
 
+# ----------------------------------------------------
+
 
 def count_new_blocks(previous_board, new_board):
+    # a reward that gives points for each new peice in a row.
+    # the reward increases as number of peices in a row increase.
+
     new_blocks_count = []
     total_blocks_count = []
     cumulative_sums = []
@@ -269,7 +292,8 @@ def count_new_blocks(previous_board, new_board):
 
         # Calculate the cumulative sum based on total_count and new_count
         if new_count > 0:
-            cumulative_sum = sum(range(total_count, total_count - new_count, -1))
+            cumulative_sum = sum(
+                range(total_count, total_count - new_count, -1))
         else:
             cumulative_sum = 0
 
@@ -277,56 +301,49 @@ def count_new_blocks(previous_board, new_board):
         total_blocks_count.append(total_count)
         cumulative_sums.append(cumulative_sum)
 
-    """
-    print("Total Blocks in each row:")
-    print(total_blocks_count)
-    print("New Blocks in each row:")
-    print(new_blocks_count)
-    print("Cum Sums")
-    print(cumulative_sums)
+    if PRINT_REWARD_CALCULATIONS:
+        print("Total Blocks in each row:")
+        print(total_blocks_count)
+        print("New Blocks in each row:")
+        print(new_blocks_count)
+        print("Cum Sums")
+        print(cumulative_sums)
 
     time.sleep(5)
-    """
 
     return new_blocks_count, total_blocks_count, cumulative_sums
 
+# ----------------------------------------------------
 
-def calculate_unreachable_spaces(binary_grid):
-    # Assuming the grid is a standard Tetris board with width 10
-    width = 10
-    height = len(binary_grid) // width
 
-    if len(binary_grid) != width * height:
-        raise ValueError("Invalid grid size. Expected a multiple of 10.")
+def calculate_unreachable_spaces(board):
+    # the agent can only send peices straight down.
+    # assign a penalty for the number of spaces an agent will not be able to reach.
 
-    def is_valid(x, y):
-        return 0 <= x < height and 0 <= y < width
+    height = len(board)
+    width = len(board[0])
+    unreachable_count = 0
 
-    def flood_fill(x, y):
-        if not is_valid(x, y) or binary_grid[x * width + y] == 1 or visited[x * width + y]:
-            return
+    for col in range(width):
+        found_piece = False
+        for row in range(height):
+            if board[row][col] == 1:
+                found_piece = True
+            elif found_piece and board[row][col] == 0:
+                unreachable_count += 1
 
-        visited[x * width + y] = True
+    if PRINT_REWARD_CALCULATIONS:
+        print("number of unreachable spaces:")
+        print(unreachable_count)
 
-        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-        for dx, dy in directions:
-            flood_fill(x + dx, y + dy)
+    return unreachable_count
 
-    visited = [False] * len(binary_grid)
-
-    # Fill from the top
-    for j in range(width):
-        if binary_grid[j] == 0:
-            flood_fill(0, j)
-
-    # Count unreachable holes
-    unreachable_spaces = sum(1 for i in range(len(binary_grid))
-                             if binary_grid[i] == 0 and not visited[i])
-
-    return unreachable_spaces
+# ----------------------------------------------------
 
 
 def calculate_average_height(grid):
+    # returns the average height of all of the columns of the tetris board
+
     width = len(grid[0])
     heights = [0] * width
 
@@ -336,14 +353,26 @@ def calculate_average_height(grid):
                 heights[col] = len(grid) - row
                 break
 
+    if PRINT_REWARD_CALCULATIONS:
+        print("column heights")
+        print(heights)
+        print("average height")
+        print(sum(heights) / width)
+
     return sum(heights) / width
 
+# ----------------------------------------------------
+
+
 def calculate_edge_reward(previous_board, new_board):
+    # determine the number of open edges on the ost recenly placed peice.
+    # do not count edges twice and consider the edge of the board as an occupied space
+
     rows = len(new_board)
     cols = len(new_board[0])
     edge_reward = 0
     unoccupied_spaces = set()
-    
+
     def count_unoccupied_edges(row, col):
         for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             new_row, new_col = row + dr, col + dc
@@ -362,8 +391,15 @@ def calculate_edge_reward(previous_board, new_board):
 
     return unoccupied_spaces
 
+# ----------------------------------------------------
+
 
 def convert_to_action(n):
+    # convert the int from 0 to 43 into a pair of action,
+    # a rotation 0 to 3 and a horizontal movement to the right or left 5 spaces.
+    # Note that is may take less than 5 movements to get to the end.
+    # This will not affect the agent and theres potential to introduce action masking.
+
     if not 0 <= n <= 43:
         raise ValueError("Input must be between 0 and 43 inclusive")
 
@@ -375,8 +411,12 @@ def convert_to_action(n):
 
     return first, second
 
+# ----------------------------------------------------
+
 
 def calculate_highest_height(grid):
+    # extract the height of the tallest column
+
     width = len(grid[0])
     heights = [0] * width
 
@@ -385,17 +425,48 @@ def calculate_highest_height(grid):
             if grid[row][col] == 1:
                 heights[col] = len(grid) - row
                 break
+
+    if PRINT_REWARD_CALCULATIONS:
+        print("max height")
+        print(max(heights))
+
     return max(heights)
 
+# ----------------------------------------------------
 
+
+def calculate_bumpiness(board):
+    # sum up the difference in each of the heighs of the
+    # columns and the column next to it
+
+    width = len(board[0])
+    heights = [0] * width
+
+    # Calculate the height of each column
+    for col in range(width):
+        for row in range(len(board)):
+            if board[row][col] != 0:
+                heights[col] = len(board) - row
+                break
+
+    # Calculate the sum of differences between adjacent columns
+    bumpiness = 0
+    for i in range(width - 1):
+        bumpiness += abs(heights[i] - heights[i+1])
+
+    if PRINT_REWARD_CALCULATIONS:
+        print("sum of differences in adjacent columns")
+        print(bumpiness)
+
+    return bumpiness
+
+
+# ----------------------------------------------------
 # Example usage of RLTetrisEnv
 if __name__ == "__main__":
     env = RLTetrisEnv()
     done = False
     state, reward = env.reset()
-    print(state)
-    print(reward)
-
 
     if USER:
         env.run_with_reward()
