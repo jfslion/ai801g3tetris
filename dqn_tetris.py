@@ -3,6 +3,7 @@
 
 from datetime import *
 import glob
+import inspect
 import gymnasium as gym
 import math
 import random
@@ -91,20 +92,10 @@ EPS_DECAY = 1000
 TAU = 0.005
 LR = 1e-4
 
-"""
-BATCH_SIZE = 256
-GAMMA = 0.99
-EPS_START = 1.0
-EPS_END = 0.01
-EPS_DECAY = 2000
-TAU = 0.001
-LR = 5e-4
-"""
+TRAIN_AGENT = True
+WATCH_REPLAY = not TRAIN_AGENT
 
-TRAIN_AGENT = False
-WATCH_REPLAY =  not TRAIN_AGENT
-
-EPISODES = 5000
+EPISODES = 1000
 
 # Get number of actions from gym action space
 n_actions = env.action_space.n
@@ -140,24 +131,48 @@ def select_action(state):
 
 
 episode_durations = []
+episode_rewards = []
 
 
 def plot_durations(show_result=False):
+    # Plot the Episode Durations in the first figure
+    # Use the first figure (if already created, it won't open a new one)
     plt.figure(1)
     durations_t = torch.tensor(episode_durations, dtype=torch.float)
     if show_result:
         plt.title('Result')
     else:
-        plt.clf()
+        plt.clf()  # Clear the current figure
         plt.title('Training...')
     plt.xlabel('Episode')
     plt.ylabel('Duration')
     plt.plot(durations_t.numpy())
-    # Take 100 episode averages and plot them too
+    # Take 100-episode averages and plot them too
     if len(durations_t) >= 100:
         means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
         means = torch.cat((torch.zeros(99), means))
         plt.plot(means.numpy())
+
+    plt.legend([])  # Clear any previous legend
+    plt.legend(["Episode Durations", "100-Episode Average"])  # Set new legend
+
+    # Plot the Episode Rewards in the second figure
+    plt.figure(2)  # Use the second figure
+    rewards_t = torch.tensor(episode_rewards, dtype=torch.float)
+    plt.xlabel('Episode')
+    plt.ylabel('Total Reward')
+    plt.plot(rewards_t.numpy(), label="Reward per Episode", color='orange')
+
+    # Take 100-episode averages and plot them too
+    if len(rewards_t) >= 100:
+        reward_means = rewards_t.unfold(0, 100, 1).mean(1).view(-1)
+        reward_means = torch.cat((torch.zeros(99), reward_means))
+        plt.plot(reward_means.numpy(),
+                 label="100-episode Average Reward", color='red')
+
+    plt.legend([])  # Clear any previous legend
+    # Set new legend
+    plt.legend(["Reward per Episode", "100-Episode Average Reward"])
 
     plt.pause(0.001)  # pause a bit so that plots are updated
     if is_ipython:
@@ -166,6 +181,7 @@ def plot_durations(show_result=False):
             display.clear_output(wait=True)
         else:
             display.display(plt.gcf())
+
 
 def optimize_model():
     if len(memory) < BATCH_SIZE:
@@ -179,9 +195,9 @@ def optimize_model():
     # Compute a mask of non-final states and concatenate the batch elements
     # (a final state would've been the one after which simulation ended)
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=device, dtype=torch.bool)
+                                            batch.next_state)), device=device, dtype=torch.bool)
     non_final_next_states = torch.cat([s for s in batch.next_state
-                                                if s is not None])
+                                       if s is not None])
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
@@ -198,13 +214,15 @@ def optimize_model():
     # state value or 0 in case the state was final.
     next_state_values = torch.zeros(BATCH_SIZE, device=device)
     with torch.no_grad():
-        next_state_values[non_final_mask] = target_net(non_final_next_states).max(1).values
+        next_state_values[non_final_mask] = target_net(
+            non_final_next_states).max(1).values
     # Compute the expected Q values
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
     # Compute Huber loss
     criterion = nn.SmoothL1Loss()
-    loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+    loss = criterion(state_action_values,
+                     expected_state_action_values.unsqueeze(1))
 
     # Optimize the model
     optimizer.zero_grad()
@@ -220,22 +238,35 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 MODEL_PATH = os.path.join(MODEL_DIR, "tetris_dqn_model.pth")
 
 # Define a save function
-def save_model(model, filename_prefix='model'):
+
+
+def save_model(model, reward_function=calculate_reward, filename_prefix='model'):
     # Get the current directory (where the script is running)
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    
+
     # Get the current time and format it as a string
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     # Create a new filename with the prefix and current time
     model_filename = f"{filename_prefix}_{current_time}.pt"
-    
+    reward_filename = f"{filename_prefix}_reward_{current_time}.txt"
+
     # Create the full path for saving the model
-    full_path = os.path.join(current_dir, model_filename)
-    
+    model_full_path = os.path.join(current_dir, model_filename)
+    reward_full_path = os.path.join(current_dir, reward_filename)
+
     # Save the model state dict
-    torch.save(model.state_dict(), full_path)
-    print(f"Model saved to {full_path}")
+    torch.save(model.state_dict(), model_full_path)
+    print(f"Model saved to {model_full_path}")
+
+    # Automatically get the source code of the reward function
+    reward_content = inspect.getsource(reward_function)
+
+    # Save the reward content to a text file
+    with open(reward_full_path, 'w') as file:
+        file.write(reward_content)
+    print(f"Reward content saved to {reward_full_path}")
+
 
 """
 # Define a load function
@@ -265,42 +296,47 @@ def load_model(model):
     root.destroy()  # Clean up the tkinter instance
     """
 
+
 def load_model(model):
     # Get the directory where the models are saved
     model_dir = os.path.dirname(os.path.abspath(__file__))
-    
+
     # Find all model files matching the pattern
     model_files = glob.glob(os.path.join(model_dir, "*.pt"))
-    
+
     if not model_files:
         print("No model files found.")
         return
-    
+
     # Sort the files by modification time, most recent first
     most_recent_model = max(model_files, key=os.path.getmtime)
-    
+
     print(f"Loading most recent model: {most_recent_model}")
-    
+
     # Load the model
     model.load_state_dict(torch.load(most_recent_model))
     model.eval()  # Set to evaluation mode for inference
-    
+
     print(f"Model loaded successfully.")
 
     # Function to watch the agent play the game
+
+
 def watch_agent_play(env, model, num_episodes=1):
     for episode in range(num_episodes):
         state, _ = env.reset()
         for t in count():
             env.render()  # Visualize the game
-            state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
+            state_tensor = torch.tensor(
+                state, dtype=torch.float32).unsqueeze(0).to(device)
             action = model(state_tensor).max(1)[1].view(1, 1)
             state, reward, done, truncated, _ = env.step(action.item())
             env.render
-            print(reward)
+            print(f"Action: {action.item()}, Reward: {reward}, Done: {done}")
             time.sleep(2)
             if done:
                 break
+
 
 if TRAIN_AGENT:
     if torch.cuda.is_available() or torch.backends.mps.is_available():
@@ -311,17 +347,22 @@ if TRAIN_AGENT:
     for i_episode in range(num_episodes):
         # Initialize the environment and get its state
         state, info = env.reset()
-        state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+        state = torch.tensor(state, dtype=torch.float32,
+                             device=device).unsqueeze(0)
+        episode_reward = 0
         for t in count():
             action = select_action(state)
-            observation, reward, terminated, truncated, _ = env.step(action.item())
+            observation, reward, terminated, truncated, _ = env.step(
+                action.item())
             reward = torch.tensor([reward], device=device)
             done = terminated or truncated
+            episode_reward += reward
 
             if terminated:
                 next_state = None
             else:
-                next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+                next_state = torch.tensor(
+                    observation, dtype=torch.float32, device=device).unsqueeze(0)
 
             # Store the transition in memory
             memory.push(state, action, next_state, reward)
@@ -337,22 +378,18 @@ if TRAIN_AGENT:
             target_net_state_dict = target_net.state_dict()
             policy_net_state_dict = policy_net.state_dict()
             for key in policy_net_state_dict:
-                target_net_state_dict[key] = policy_net_state_dict[key]*TAU + target_net_state_dict[key]*(1-TAU)
+                target_net_state_dict[key] = policy_net_state_dict[key] * \
+                    TAU + target_net_state_dict[key]*(1-TAU)
             target_net.load_state_dict(target_net_state_dict)
 
-            if done :
+            if done:
                 episode_durations.append(t + 1)
+                episode_rewards.append(episode_reward)
                 plot_durations()
-                save_interval = 1000
-                if i_episode % save_interval == 0 | env.score > 400000:  # e.g., save every 50 episodes
+                save_interval = 500
+                if i_episode % save_interval == 0:  # e.g., save every 50 episodes
                     save_model(policy_net)
                 break
-                
-
-    # Load the model and watch it play
-    # load_model(policy_net)
-    # watch_agent_play(env, policy_net)
-
 
     print('Complete')
     # Save model after training

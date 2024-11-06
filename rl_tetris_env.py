@@ -14,10 +14,12 @@ class RLTetrisEnv(Tetris):
         super().__init__()
         # Define action and observation spaces if needed for RL algorithms
         self.action_space = spaces.Discrete(44)
+        self.steps = 0
 
     def step(self, action):
         # the step function will be all of the time from the new peice starting at the top, then falling all the way and lines clearing as neccesary.
 
+        self.steps += 1
         num_rotations, num_movements = convert_to_action(
             action)  # unpack the action
         done = False  # initialize done
@@ -32,20 +34,16 @@ class RLTetrisEnv(Tetris):
                 self.current_piece = rotated_piece
 
         # Move left or right based on num_movements
-        unnecessary_movements = 0
+        unnecesary_movements = False
         if num_movements != 0:
             direction = 1 if num_movements > 0 else -1
-            actual_movements = 0
             for _ in range(abs(num_movements)):
-                new_x = self.current_piece['x'] + direction
                 if self.valid_move(self.current_piece, self.current_piece['x'] + direction, self.current_piece['y']):
                     self.current_piece['x'] += direction
-                    actual_movements += 1
                 else:
-                    # Stop moving if the next move is not valid
-                    # Calculate penalty for unnecessary movements
-                    unnecessary_movements = abs(
-                        num_movements) - actual_movements
+                    if PRINT_REWARD_CALCULATIONS:
+                        print("Unnecesary horizontal movement")
+                    unnecesary_movements = True
                     break
 
         # Move the peice down until it cant move anymore
@@ -83,8 +81,8 @@ class RLTetrisEnv(Tetris):
         next_state = np.array(state, dtype=np.float32)
 
         # reward function
-        reward = calculate_reward(
-            previous_board, board_before_clears, new_board, rows_cleared)
+        reward, lines_cleared_reward, column_height_penalty, blocked_spaces_penalty, total_peice_reward, unnecesary_movement_penalty = calculate_reward(
+            previous_board, board_before_clears, new_board, rows_cleared, self.steps, unnecesary_movements)
 
         # end the game if the socre gets high enough
         if self.score > 400000:
@@ -116,6 +114,8 @@ class RLTetrisEnv(Tetris):
         self.game_over = False
         self.score = 0
 
+        self.steps = 0
+
         # Set up font for rendering text
         self.font = pygame.font.Font(None, 36)
 
@@ -123,6 +123,8 @@ class RLTetrisEnv(Tetris):
         self.move_delay = 100  # Delay in milliseconds
         self.last_move_time = {pygame.K_LEFT: 0,
                                pygame.K_RIGHT: 0, pygame.K_DOWN: 0}
+
+        self.total_pieces = 0
 
         # flatten the grid
         binary_grid = convert_to_binary(self.grid)
@@ -172,6 +174,7 @@ class RLTetrisEnv(Tetris):
                     self.current_piece['y'] += 1
                 else:
                     # If the piece can't move down, place it and create a new piece
+                    self.steps += 1
                     self.place_piece(self.current_piece)
                     board_before_clears = convert_to_binary(self.grid)
                     rows_cleared = self.remove_full_rows()
@@ -181,8 +184,8 @@ class RLTetrisEnv(Tetris):
                     # update the boards and calc the reward
                     previous_board = new_board
                     new_board = convert_to_binary(self.grid)
-                    reward = calculate_reward(
-                        previous_board, board_before_clears, new_board, rows_cleared)
+                    reward, lines_cleared_reward, column_height_penalty, blocked_spaces_penalty, total_peice_reward, unnecesary_movement_penalty = calculate_reward(
+                        previous_board, board_before_clears, new_board, rows_cleared, self.steps, 0)
                     print("Reward:")
                     print(reward)
 
@@ -207,7 +210,7 @@ class RLTetrisEnv(Tetris):
 
 # --------------HELPER FUNCTIONS--------------------------
 
-def calculate_reward(previous_grid, grid_before_line_clears, new_grid, lines_cleared):
+def calculate_reward(previous_grid, grid_before_line_clears, new_grid, lines_cleared, total_peices, unnecesary_movements):
 
     # initialize the reward
     reward = 0
@@ -224,7 +227,10 @@ def calculate_reward(previous_grid, grid_before_line_clears, new_grid, lines_cle
     # reward += np.sum(cumulative_sums)
 
     # add a qudratic reward for clearing lines to incentivize combos
-    reward += 10 * lines_cleared ** 2
+    if lines_cleared > 0:
+        print("Agent Cleared a Line!")
+    lines_cleared_reward = 100 * lines_cleared ** 2
+    reward += lines_cleared_reward
     # 10, 40, 90, 160
 
     # reward based on placing peices that minimize unoccupied edges
@@ -236,11 +242,13 @@ def calculate_reward(previous_grid, grid_before_line_clears, new_grid, lines_cle
 
     # encourage keeping the max column height low
     max_column_height = calculate_highest_height(new_grid)
-    reward -= max_column_height
+    column_height_penalty = -max_column_height
+    reward += 2 * column_height_penalty
 
     # count the number of spaces the agent can't fill
     num_holes = calculate_unreachable_spaces(new_grid)
-    reward -= num_holes
+    blocked_spaces_penalty = -num_holes
+    reward += blocked_spaces_penalty
 
     # encourage keeping the average column height low
     # avg_column_height = calculate_average_height(new_binary)
@@ -248,11 +256,34 @@ def calculate_reward(previous_grid, grid_before_line_clears, new_grid, lines_cle
 
     # minimize the height difference across rows
     bumpiness = calculate_bumpiness(new_grid)
-    reward -= bumpiness
+    # reward -= bumpiness
+
+    # add a reward for every peice placed
+    # reward += 1 # not quite sure how this helps
+
+    # add a reward for the total number of peices placed
+    total_peice_reward = total_peices
+    reward += 1.5 * total_peice_reward
+
+    # highly penalize unnecesary movements
+    unnecesary_movement_penalty = 0
+    if unnecesary_movements:
+        unnecesary_movement_penalty = -100
+
+    reward += unnecesary_movement_penalty
+
+    if PRINT_REWARD_CALCULATIONS:
+        print("lines cleared")
+        print(lines_cleared)
+        print("lines cleared reward")
+        print(10 * lines_cleared ** 2)
+        print("total Peices")
+        print(total_peices)
+        time.sleep(10)
 
     reward = np.float32(reward)
 
-    return reward
+    return reward, lines_cleared_reward, column_height_penalty, blocked_spaces_penalty, total_peice_reward, unnecesary_movement_penalty
 
 # ----------------------------------------------------
 
