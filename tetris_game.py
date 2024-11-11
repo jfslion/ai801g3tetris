@@ -1,96 +1,58 @@
 # Leverage the code from github repository: https://github.com/tucna/Programming-Basic-Concepts
 # Utilize concepts from the follwoing video: https://www.youtube.com/watch?v=gIjVwODrXC8
-
-import numpy as np
 import pygame
+import tetris_game_config as conf
 import random
-
-# Initialize Pygame
-pygame.init()
-
-# Define colors using RGB tuples
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-CYAN = (0, 255, 255)
-YELLOW = (255, 255, 0)
-MAGENTA = (255, 0, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
-ORANGE = (255, 165, 0)
-GRAY = (128, 128, 128)  # Color for the border
-
-# Game dimensions
-BLOCK_SIZE = 30  # Size of each tetromino block in pixels
-GRID_WIDTH = 10  # Number of columns in the game grid
-GRID_HEIGHT = 20  # Number of rows in the game grid
-BORDER_WIDTH = 4  # Width of the border around the game area in pixels
-SCREEN_WIDTH = BLOCK_SIZE * GRID_WIDTH + BORDER_WIDTH * \
-    2 + 200  # Total screen width, including space for score
-SCREEN_HEIGHT = BLOCK_SIZE * GRID_HEIGHT + BORDER_WIDTH  # Total screen height
-
-# Define tetromino shapes using 2D lists
-# Each sublist represents a row, and 1 indicates a filled block
-SHAPES = [
-    [[1, 1, 1, 1]],  # I-shape
-    [[1, 1], [1, 1]],  # O-shape
-    [[1, 1, 1], [0, 1, 0]],  # T-shape
-    [[1, 1, 1], [1, 0, 0]],  # L-shape
-    [[1, 1, 1], [0, 0, 1]],  # J-shape
-    [[1, 1, 0], [0, 1, 1]],  # S-shape
-    [[0, 1, 1], [1, 1, 0]]  # Z-shape
-]
-
-# Colors for each tetromino shape
-COLORS = [CYAN, YELLOW, MAGENTA, RED, GREEN, BLUE, ORANGE]
-
-PRINT_REWARD = True
-
 
 class Tetris:
     def __init__(self):
-        # Set up the game window
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        # Save the configuration requested.
+        self.conf = conf        
+
+        # Initialize pygame
+        pygame.init()
+
+        # Set up the game window.
+        self.screen = pygame.display.set_mode((conf.SCREEN_WIDTH, conf.SCREEN_HEIGHT))
         pygame.display.set_caption("Tetris")
 
-        # Create a clock object to control the game's framerate
+        # Create a clock object to control the game's framerate.
         self.clock = pygame.time.Clock()
 
-        # Initialize the game grid (0 represents empty cells)
-        self.grid = [[0 for _ in range(GRID_WIDTH)]
-                     for _ in range(GRID_HEIGHT)]
+        # Initialize the game grid (0 represents empty cells).
+        self.grid = [[0 for _ in range(conf.GRID_WIDTH)]
+                     for _ in range(conf.GRID_HEIGHT)]
 
-        # Create the first tetromino piece
+        # Create the first tetromino piece.
         self.current_piece = self.new_piece()
 
-        # Game state variables
+        # Game state variables.
         self.game_over = False
         self.score = 0
 
-        # Set up font for rendering text
+        # Set up font for rendering text.
         self.font = pygame.font.Font(None, 36)
 
-        # Set up delay for continuous movement
+        # Set up delay for continuous movement.
         self.move_delay = 100  # Delay in milliseconds
         self.last_move_time = {pygame.K_LEFT: 0,
                                pygame.K_RIGHT: 0, pygame.K_DOWN: 0}
 
     def new_piece(self):
-        # Randomly select a shape and its corresponding color
-        shape = random.choice(SHAPES)
-        color = COLORS[SHAPES.index(shape)]
+        # Randomly select a shape and its corresponding color.
+        shape = random.choice(self.conf.SHAPES)
+        color = self.conf.COLORS[self.conf.SHAPES.index(shape)]
 
-        # Return a dictionary representing the new piece
+        # Return a dictionary representing the new piece.
         return {
             'shape': shape,
             'color': color,
             # Center the piece horizontally
-            'x': GRID_WIDTH // 2 - len(shape[0]) // 2,
+            'x': self.conf.GRID_WIDTH // 2 - len(shape[0]) // 2,
             'y': 0  # Start at the top of the grid
         }
 
     def calculate_game_score(self, lines_cleared):
-
         if lines_cleared == 0:
             return 0
 
@@ -101,7 +63,7 @@ class Tetris:
             4: 1200   # Tetris
         }
 
-    # Calculate score for this turn
+        # Calculate score for this turn
         score = points[lines_cleared]
         return score
 
@@ -110,8 +72,8 @@ class Tetris:
         for i, row in enumerate(piece['shape']):
             for j, cell in enumerate(row):
                 if cell:
-                    if (x + j < 0 or x + j >= GRID_WIDTH or  # Check horizontal boundaries
-                        y + i >= GRID_HEIGHT or  # Check bottom boundary
+                    if (x + j < 0 or x + j >= self.conf.GRID_WIDTH or  # Check horizontal boundaries
+                        y + i >= self.conf.GRID_HEIGHT or  # Check bottom boundary
                             # Check collision with placed pieces
                             (y + i >= 0 and self.grid[y + i][x + j])):
                         return False
@@ -129,7 +91,7 @@ class Tetris:
         full_rows = [i for i, row in enumerate(self.grid) if all(row)]
         for row in full_rows:
             del self.grid[row]
-            self.grid.insert(0, [0 for _ in range(GRID_WIDTH)])
+            self.grid.insert(0, [0 for _ in range(self.conf.GRID_WIDTH)])
         return len(full_rows)  # Return the number of rows removed
 
     def rotate_piece(self, piece):
@@ -145,11 +107,11 @@ class Tetris:
     def draw_border(self):
         # Draw the border around the game area
         pygame.draw.rect(
-            self.screen, GRAY, (0, 0, SCREEN_WIDTH - 200, SCREEN_HEIGHT), BORDER_WIDTH)
+            self.screen, self.conf.GRAY, (0, 0, self.conf.SCREEN_WIDTH - 200, self.conf.SCREEN_HEIGHT), self.conf.BORDER_WIDTH)
 
     def draw(self):
         # Clear the screen
-        self.screen.fill(BLACK)
+        self.screen.fill(self.conf.BLACK)
 
         # Draw the border
         self.draw_border()
@@ -159,29 +121,29 @@ class Tetris:
             for x, color in enumerate(row):
                 if color:
                     pygame.draw.rect(self.screen, color,
-                                     (x * BLOCK_SIZE + BORDER_WIDTH,
-                                      y * BLOCK_SIZE,
-                                      BLOCK_SIZE - 1, BLOCK_SIZE - 1))
+                                     (x * self.conf.BLOCK_SIZE + self.conf.BORDER_WIDTH,
+                                      y * self.conf.BLOCK_SIZE,
+                                      self.conf.BLOCK_SIZE - 1, self.conf.BLOCK_SIZE - 1))
 
         # Draw the current falling piece
         for i, row in enumerate(self.current_piece['shape']):
             for j, cell in enumerate(row):
                 if cell:
                     pygame.draw.rect(self.screen, self.current_piece['color'],
-                                     ((self.current_piece['x'] + j) * BLOCK_SIZE + BORDER_WIDTH,
+                                     ((self.current_piece['x'] + j) * self.conf.BLOCK_SIZE + self.conf.BORDER_WIDTH,
                                       (self.current_piece['y'] +
-                                       i) * BLOCK_SIZE,
-                                      BLOCK_SIZE - 1, BLOCK_SIZE - 1))
+                                       i) * self.conf.BLOCK_SIZE,
+                                      self.conf.BLOCK_SIZE - 1, self.conf.BLOCK_SIZE - 1))
 
         # Draw the score
-        score_text = self.font.render(f"Score: {self.score}", True, WHITE)
-        self.screen.blit(score_text, (SCREEN_WIDTH - 190, 10))
+        score_text = self.font.render(f"Score: {self.score}", True, self.conf.WHITE)
+        self.screen.blit(score_text, (self.conf.SCREEN_WIDTH - 190, 10))
 
         # Draw game over message if the game has ended
         if self.game_over:
-            game_over_text = self.font.render("GAME OVER", True, WHITE)
-            self.screen.blit(game_over_text, (SCREEN_WIDTH //
-                             2 - 70, SCREEN_HEIGHT // 2))
+            game_over_text = self.font.render("GAME OVER", True, self.conf.WHITE)
+            self.screen.blit(game_over_text, (self.conf.SCREEN_WIDTH //
+                             2 - 70, self.conf.SCREEN_HEIGHT // 2))
 
         # Update the display
         pygame.display.flip()
@@ -220,6 +182,7 @@ class Tetris:
             # Handle Pygame events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    pygame.quit()
                     return
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_UP:
@@ -254,6 +217,6 @@ class Tetris:
 
 
 if __name__ == "__main__":
-    game = Tetris()
+    import tetris_game_config as game_configuration
+    game = Tetris(game_configuration)
     game.run()
-    pygame.quit()
