@@ -20,6 +20,11 @@ class TetrisEnv(Tetris):
         # Begin step counter.
         self.steps = 0
 
+        # Define additional grids.
+        self.grid = []
+        self.prev_grid = []
+        self.uncleared_grid = []
+
         # Misc and toggles.
         self.print_reward_calc = opts['print_reward_calc']
         self.debug_grid = opts['debug_grid']
@@ -38,7 +43,7 @@ class TetrisEnv(Tetris):
         done = False 
 
         # Flatten the grid.
-        previous_board = self.convert_to_binary(self.grid)
+        self.prev_grid = self.convert_to_binary()
 
         # Rotate the piece.
         for _ in range(num_rotations):
@@ -59,16 +64,16 @@ class TetrisEnv(Tetris):
                     unnecesary_movements = True
                     break
 
-        # Move the peice down until it cant move anymore
+        # Move the peice down until it cant move anymore.
         can_fall = True
         while can_fall:
             if self.valid_move(self.current_piece, self.current_piece['x'], self.current_piece['y'] + 1):
                 self.current_piece['y'] += 1
             else:
                 can_fall = False
-                # If the piece can't move down, place it and create a new piece
+                # If the piece can't move down, place it and create a new piece.
                 self.place_piece(self.current_piece)
-                board_before_clears = self.convert_to_binary(self.grid)
+                self.uncleared_grid = self.convert_to_binary()
                 rows_cleared = self.remove_full_rows()
                 # Increase score for cleared rows
                 self.score += self.calculate_game_score(rows_cleared)
@@ -79,8 +84,8 @@ class TetrisEnv(Tetris):
                     done = True
 
         # Flatten the grid.
-        new_board = self.convert_to_binary(self.grid)
-        flattened_grid = [float(item) for row in new_board for item in row]
+        self.grid = self.convert_to_binary()
+        flattened_grid = [float(item) for row in self.grid for item in row]
 
         # Convert the peice number to a NumPy array
         next_shape_enum = self.conf.SHAPES.index(self.current_piece['shape'])
@@ -96,39 +101,33 @@ class TetrisEnv(Tetris):
 
         # Show what the reward function is dealing with.
         if self.debug_grid:
-            print(f'Previous Grid:\n\t{self.prev_grid}')
-            print(f'Grid Before Clears:\n\t{self.uncleared_grid}')
-            print(f'New Grid:\n\t{self.grid}')
+            print('New Grid:')
+            for row in self.grid: print(f'\t{row}')
 
         # Calculate reward.
-        reward, reward_meta = self.rewards.calc_reward((previous_board, 
-                                               board_before_clears, 
-                                               new_board, 
+        reward, reward_meta = self.rewards.calc_reward(self.prev_grid, 
+                                               self.uncleared_grid, 
+                                               self.grid, 
                                                rows_cleared, 
                                                self.steps, 
-                                               unnecesary_movements))
+                                               unnecesary_movements)
 
-
-        # End the game if the score gets high enough
+        # End the game if the score gets high enough.
         if self.score > self.score_cutoff:
             done = True
             print(f'Ending game at max score of {self.score_cutoff}')
 
-        # Include additional info.
-        info = ""
-        truncated = False
-
-        return next_state, reward, done, truncated, info
+        return next_state, reward, done, reward_meta
 
 
     def reset(self):
         """"""
-        self.init()
+        super().__init__()
         self.total_pieces = 0
 
         # Flatten the grid.
-        binary_grid = self.convert_to_binary(self.grid)
-        flattened_grid = [float(item) for row in binary_grid for item in row]
+        self.grid = self.convert_to_binary()
+        flattened_grid = [float(item) for row in self.grid for item in row]
 
         # Convert the peice number to a NumPy array
         next_shape_enum = self.conf.SHAPES.index(self.current_piece['shape'])
@@ -148,7 +147,7 @@ class TetrisEnv(Tetris):
         return next_state, info
 
 
-    def convert_to_binary(grid):
+    def convert_to_binary(self):
         """
         Since the tetris board holds color information in the location of a peice,
         convert each color to an occupied bit for simplicity of calculations
@@ -159,10 +158,10 @@ class TetrisEnv(Tetris):
                 return 1 if any(cell) else 0
             return 1 if cell else 0  # For non-tuple values, treat non-zero as occupied
 
-        return [[cell_to_binary(cell) for cell in row] for row in grid]
+        return [[cell_to_binary(cell) for cell in row] for row in self.board]
 
 
-    def convert_to_action(n):
+    def convert_to_action(self, n):
         """
         Convert the int from 0 to 43 into a pair of action,
         a rotation 0 to 3 and a horizontal movement to the right or left 5 spaces.
@@ -180,6 +179,19 @@ class TetrisEnv(Tetris):
 
         return first, second
 
+
+    def get_state_size(self):
+        """
+        TODO: Define how this is calculated.
+        """
+        return 201
+
+
+    def render(self):
+        """
+        Render function to draw the board when desired.
+        """
+        self.draw()
 
     # def run_with_reward(self):
     #     fall_time = 0

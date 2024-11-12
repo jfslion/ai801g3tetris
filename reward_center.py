@@ -32,69 +32,68 @@ class RewardCenter:
 
         # Initialize the reward.
         reward = 0
+        reward_meta = {}
 
         # Add a quadratic reward for clearing lines to incentivize combos.
         r_string = 'lines_cleared'
-        if self.setup[rString][0]:
+        if self.setup[r_string][0]:
             if num_lines_cleared > 0:
                 print(f'Num lines cleared: {num_lines_cleared}')
             lines_cleared = self.setup[r_string][1]['mult'] * num_lines_cleared ** self.setup[r_string][1]['exp']
+            reward_meta[r_string] = lines_cleared
             reward += lines_cleared
 
         # Encourage keeping the max column height low.
         r_string = 'max_height'
         if self.setup[r_string][0]:
-            max_height = self.calc_max_height()
-            reward += max_height * self.setup[r_string][1]['mult']
+            max_height = self.calc_max_height() * self.setup[r_string][1]['mult']
+            reward_meta[r_string] = max_height
+            reward += max_height
 
         # Count the number of spaces the agent can't fill
         r_string = 'cells_blocked'
         if self.setup[r_string][0]:
-            cells_blocked = self.calculate_unreachable_spaces()
-            reward += cells_blocked * self.setup[r_string][1]['mult']
+            cells_blocked = self.calculate_unreachable_spaces() * self.setup[r_string][1]['mult']
+            reward_meta[r_string] = cells_blocked
+            reward += cells_blocked
 
         # Minimize the height difference across rows.
         r_string = 'bumpiness'
         if self.setup[r_string][0]:
-            bumpiness = self.calculate_bumpiness()
-            reward += bumpiness * self.setup[r_string][1]['mult']
+            bumpiness = self.calculate_bumpiness() * self.setup[r_string][1]['mult']
+            reward_meta[r_string] = cells_blocked
+            reward += bumpiness
 
         # Add a reward for the total number of peices placed.
         r_string = 'total_pieces'
         if self.setup[r_string][0]:
+            reward_meta[r_string] = total_pieces * self.setup[r_string][1]['mult']
             reward += total_pieces * self.setup[r_string][1]['mult']
 
         # Highly penalize unnecesary movements.
         r_string = 'bad_movement'
         if self.setup[r_string][0]:
-            bad_movement = 0
+            bad_movement_hit = 0
             if bad_movement_bool:
                 bad_movement_hit = self.setup[r_string][1]['const']
-            reward += bad_movement
+            reward_meta[r_string] = bad_movement_hit
+            reward += bad_movement_hit
 
         # Minimize unoccupied edges.
-        r_string
+        r_string = 'unoccupied_edges'
         if self.setup[r_string][0]:
-            unoccupied_edges = 0
+            unoccupied_edges_val = 0
             unoccupied_edges_set = self.calc_edge_reward()
             if len(unoccupied_edges_set) > 0:
-                unoccupied_edges = self.setup[r_string][1]['scale'] / len(unoccupied_edges_set)
-            reward += unoccupied_edges * self.setup[r_string][1]['mult']
+                unoccupied_edges_val = self.setup[r_string][1]['scale'] / len(unoccupied_edges_set)
+                unoccupied_edges_val *= self.setup[r_string][1]['mult']
+            reward_meta['unoccupied_edges'] = unoccupied_edges_val
+            reward += unoccupied_edges_val
 
+        reward_meta['total'] = reward
         reward = np.float32(reward)
 
-        # Gather the rewards metadata.
-        reward_meta = {}
-        if self.publish_rewards:
-            reward_meta = {
-                'lines_cleared'    : lines_cleared,
-                'column_heigh'     : max_height,
-                'blocked_spaces'   : cells_blocked,
-                'bumpiness'        : bumpiness,
-                'total_pieces'     : total_pieces,
-                'bad_movement'     : bad_movement,
-                'unoccupied_edges' : unoccupied_edges,
-        }
+
         return reward, reward_meta
 
 

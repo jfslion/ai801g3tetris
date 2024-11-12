@@ -19,13 +19,12 @@ import torch.nn.functional as F
 
 import tkinter as tk
 from tkinter import filedialog
-import torch
 
 import os
 
-from rl_tetris_env import *
+from environment_tetris import TetrisEnv
 
-env = RLTetrisEnv()
+env = TetrisEnv()
 
 # set up matplotlib
 is_ipython = 'inline' in matplotlib.get_backend()

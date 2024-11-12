@@ -20,7 +20,7 @@ class Tetris:
         self.clock = pygame.time.Clock()
 
         # Initialize the game grid (0 represents empty cells).
-        self.grid = [[0 for _ in range(conf.GRID_WIDTH)]
+        self.board = [[0 for _ in range(conf.GRID_WIDTH)]
                      for _ in range(conf.GRID_HEIGHT)]
 
         # Create the first tetromino piece.
@@ -75,7 +75,7 @@ class Tetris:
                     if (x + j < 0 or x + j >= self.conf.GRID_WIDTH or  # Check horizontal boundaries
                         y + i >= self.conf.GRID_HEIGHT or  # Check bottom boundary
                             # Check collision with placed pieces
-                            (y + i >= 0 and self.grid[y + i][x + j])):
+                            (y + i >= 0 and self.board[y + i][x + j])):
                         return False
         return True
 
@@ -84,14 +84,14 @@ class Tetris:
         for i, row in enumerate(piece['shape']):
             for j, cell in enumerate(row):
                 if cell:
-                    self.grid[piece['y'] + i][piece['x'] + j] = piece['color']
+                    self.board[piece['y'] + i][piece['x'] + j] = piece['color']
 
     def remove_full_rows(self):
         # Identify and remove full rows, then add new empty rows at the top
-        full_rows = [i for i, row in enumerate(self.grid) if all(row)]
+        full_rows = [i for i, row in enumerate(self.board) if all(row)]
         for row in full_rows:
-            del self.grid[row]
-            self.grid.insert(0, [0 for _ in range(self.conf.GRID_WIDTH)])
+            del self.board[row]
+            self.board.insert(0, [0 for _ in range(self.conf.GRID_WIDTH)])
         return len(full_rows)  # Return the number of rows removed
 
     def rotate_piece(self, piece):
@@ -109,7 +109,7 @@ class Tetris:
         pygame.draw.rect(
             self.screen, self.conf.GRAY, (0, 0, self.conf.SCREEN_WIDTH - 200, self.conf.SCREEN_HEIGHT), self.conf.BORDER_WIDTH)
 
-    def draw(self):
+    def draw(self, reward_meta = None):
         # Clear the screen
         self.screen.fill(self.conf.BLACK)
 
@@ -117,7 +117,7 @@ class Tetris:
         self.draw_border()
 
         # Draw the placed pieces on the grid
-        for y, row in enumerate(self.grid):
+        for y, row in enumerate(self.board):
             for x, color in enumerate(row):
                 if color:
                     pygame.draw.rect(self.screen, color,
@@ -135,9 +135,17 @@ class Tetris:
                                        i) * self.conf.BLOCK_SIZE,
                                       self.conf.BLOCK_SIZE - 1, self.conf.BLOCK_SIZE - 1))
 
-        # Draw the score
-        score_text = self.font.render(f"Score: {self.score}", True, self.conf.WHITE)
+        # Display the Score.
+        self.font = pygame.font.Font(None, 36)
+        score_text = self.font.render(f'Score: {self.score}', True, self.conf.WHITE)
         self.screen.blit(score_text, (self.conf.SCREEN_WIDTH - 190, 10))
+
+        # Print the reward calcs if present.
+        if reward_meta:
+            self.font = pygame.font.Font(None, 18)
+            for indx, (rew, val) in enumerate(reward_meta.items()):
+                score_text = self.font.render(f'{rew}: {val:.2f}', True, self.conf.WHITE)
+                self.screen.blit(score_text, (self.conf.SCREEN_WIDTH - 190, 10*(indx+3)+(10*(indx+1))))
 
         # Draw game over message if the game has ended
         if self.game_over:

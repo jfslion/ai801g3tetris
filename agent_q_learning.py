@@ -13,8 +13,8 @@ class QLearningAgent:
         self.q_table = {}
 
     def get_q_value(self, state, action):
-        # Convert the state to a tuple to use it as a key in the Q-table
-        # Flatten the array to 1D and convert to tuple
+        # Convert the state to a tuple to use it as a key in the Q-table.
+        # Flatten the array to 1D and convert to tuple.
         state_key = tuple(state)
 
         # Check if the state_key is in the Q-table

@@ -1,4 +1,5 @@
 import time
+import numpy as np
 from environment_tetris import TetrisEnv
 from agent_q_learning import QLearningAgent
 
@@ -7,11 +8,12 @@ from agent_q_learning import QLearningAgent
 runner_args = {
     'random_seed':          26392639,
     'score_cutoff'     :    400000,
-    'mode'             :    'user', # 'user', 'q_learning', 'dqn'
+    'mode'             :    'random_watch', # 'user', 'random_watch', 'q_learning', 'dqn'
     'print_reward_calc':    True,
     'publish_rewards'  :    True,
     'debug_grid'       :    True,
     'render'           :    True,
+    'render_pause_sec' :    1.0,
     }
 
 # Rewards configuration items.
@@ -32,30 +34,53 @@ if __name__ == "__main__":
     run_mode = runner_args['mode']
     env = TetrisEnv(runner_args, rewards_config)
 
+    # Short the runner if it is a user game.
+    if run_mode == 'user':
+        env.run()
+        exit
+
+    # Setup agent played mode.
+    done = False
+    state, reward = env.reset()
+    print_reward = runner_args['print_reward_calc']
+    render = runner_args['render']
+    render_pause = runner_args['render_pause_sec']
+
     # Execute user specified run_mode.
     match run_mode:
 
-        case 'user':
-            env.run()
-
-        case 'q_learning':            
-            state_size = env.get_state_size()
-            action_space = env.action_space
-            agent = QLearningAgent(state_size, action_space)
-            done = False
-            state, reward = env.reset()
-            # env.run_woth_reward()
+        case 'random_watch':
+            """
+            Useful for debugging.
+            """
             while not done:
-                action = np.random.randint(0, 43)
-                observation, reward, done, _, _ = env.step(action)
-                env.render()
-                time.sleep(.5)  # Pauses for 1 second
-                print(f"Action: {action}, Reward: {reward}, Done: {done}")
+                action = env.action_space.sample()
+                next_state, reward, done, reward_meta = env.step(action)
+                if render:
+                    env.draw(reward_meta)
+                    time.sleep(render_pause)
+                if print_reward:
+                    print(f"Action: {action}, Reward: {reward}, Done: {done}")
+
+        case 'q_learning':
+            """
+            """
+            agent = QLearningAgent(env.get_state_size(), env.action_space)
+            while not done:
+                action = agent.choose_action(state)
+                next_state, reward, done, reward_meta = env.step(action)
+                agent.learn(state, action, reward, next_state, done)
+                if render:
+                    env.draw(reward_meta)
+                    time.sleep(render_pause)
+                if print_reward:
+                    print(f"Action: {action}, Reward: {reward}, Done: {done}")
 
         case 'dqt':
-            #TODO
+            """
+            """
             pass
-            # RENDER = True
+            # #TODO
             # num_episodes = 1000
             # for episode in range(num_episodes):
             #     state = env.reset()
@@ -65,9 +90,9 @@ if __name__ == "__main__":
 
             #     while not done:
             #         action = agent.choose_action(state)
-            #         next_state, reward, done, truncated, info = env.step(action)
-            #         if RENDER:
-            #             env.render()
+            #         next_state, reward, done, reward_meta = env.step(action)
+            #         if render:
+            #             env.draw(reward_meta)
             #         next_state = agent.state_to_key(next_state)
 
             #         agent.learn(state, action, reward, next_state, done)
