@@ -15,6 +15,26 @@ class RLTetrisEnv(Tetris):
         # Define action and observation spaces if needed for RL algorithms
         self.action_space = spaces.Discrete(44)
         self.steps = 0
+    def copy_state(self):
+        # Return a dictionary with only serializable attributes
+        return {
+            'grid': copy.deepcopy(self.grid),
+            'current_piece': copy.deepcopy(self.current_piece),
+            'game_over': self.game_over,
+            'score': self.score,
+            'steps': self.steps,
+            'last_move_time': copy.deepcopy(self.last_move_time)
+        }
+
+    def load_state(self, state):
+        # Restore environment state from the dictionary
+        self.grid = copy.deepcopy(state['grid'])
+        self.current_piece = copy.deepcopy(state['current_piece'])
+        self.game_over = state['game_over']
+        self.score = state['score']
+        self.steps = state['steps']
+        self.last_move_time = copy.deepcopy(state['last_move_time'])
+
 
     def step(self, action):
         # the step function will be all of the time from the new peice starting at the top, then falling all the way and lines clearing as neccesary.
