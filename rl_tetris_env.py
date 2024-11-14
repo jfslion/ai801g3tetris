@@ -1,3 +1,4 @@
+import copy
 import time
 import numpy as np
 import pygame
@@ -243,13 +244,13 @@ def calculate_reward(previous_grid, grid_before_line_clears, new_grid, lines_cle
 
     # add increasing reward for each block i the same column
     # e.g. a horizontal I might yeild 8+7+6+5 if the row aleardy contained 4 filled blocks.
-    # _, _, cumulative_sums = count_new_blocks(previous_grid, grid_before_line_clears)
+    new_blocks_count, total_blocks_count, cumulative_sums = count_new_blocks(previous_grid, grid_before_line_clears)
     # reward += np.sum(cumulative_sums)
 
     # add a qudratic reward for clearing lines to incentivize combos
     if lines_cleared > 0:
         print("Agent Cleared a Line!")
-    lines_cleared_reward = 100 * lines_cleared ** 2
+    lines_cleared_reward = 10 * lines_cleared ** 2
     reward += lines_cleared_reward
     # 10, 40, 90, 160
 
@@ -261,29 +262,30 @@ def calculate_reward(previous_grid, grid_before_line_clears, new_grid, lines_cle
     #     reward += 10/len(unoccupied_edges)
 
     # encourage keeping the max column height low
+    prev_max_column_height = calculate_highest_height(previous_grid)
     max_column_height = calculate_highest_height(new_grid)
-    column_height_penalty = -max_column_height
-    reward += 2 * column_height_penalty
+    delta_column_height_penalty = prev_max_column_height-max_column_height
+    reward += delta_column_height_penalty
 
     # count the number of spaces the agent can't fill
+    prev_num_holes = calculate_unreachable_spaces(previous_grid)
     num_holes = calculate_unreachable_spaces(new_grid)
-    blocked_spaces_penalty = -num_holes
-    reward += blocked_spaces_penalty
+    delta_blocked_spaces_penalty = prev_num_holes-num_holes
+    reward += delta_blocked_spaces_penalty
 
     # encourage keeping the average column height low
     # avg_column_height = calculate_average_height(new_binary)
     # reward -= avg_column_height
 
     # minimize the height difference across rows
+    prev_bumpiness = calculate_bumpiness(previous_grid)
     bumpiness = calculate_bumpiness(new_grid)
-    # reward -= bumpiness
-
-    # add a reward for every peice placed
-    # reward += 1 # not quite sure how this helps
+    delta_bumpiness = prev_bumpiness-bumpiness
+    # reward += delta_bumpiness
 
     # add a reward for the total number of peices placed
     total_peice_reward = total_peices
-    reward += 1.5 * total_peice_reward
+    # reward += total_peice_reward
 
     # highly penalize unnecesary movements
     unnecesary_movement_penalty = 0
@@ -303,7 +305,7 @@ def calculate_reward(previous_grid, grid_before_line_clears, new_grid, lines_cle
 
     reward = np.float32(reward)
 
-    return reward, lines_cleared_reward, column_height_penalty, blocked_spaces_penalty, total_peice_reward, unnecesary_movement_penalty
+    return reward, lines_cleared_reward, delta_column_height_penalty, delta_blocked_spaces_penalty, total_peice_reward, unnecesary_movement_penalty
 
 # ----------------------------------------------------
 
@@ -359,8 +361,6 @@ def count_new_blocks(previous_board, new_board):
         print(new_blocks_count)
         print("Cum Sums")
         print(cumulative_sums)
-
-    time.sleep(5)
 
     return new_blocks_count, total_blocks_count, cumulative_sums
 
