@@ -1,13 +1,16 @@
 import time
+import copy
 import numpy as np
 from tetris_game import Tetris
 from gymnasium import spaces
 from reward_center import RewardCenter
 
 class TetrisEnv(Tetris):
-    """"""
+    """
+    """
     def __init__(self, opts, reward_params):
-        """"""
+        """
+        """
         super().__init__()
 
         # Initialize RewardCenter
@@ -31,6 +34,38 @@ class TetrisEnv(Tetris):
         self.score_cutoff = opts['score_cutoff']
 
 
+    def copy_state(self):
+        """
+        Return a dictionary with only serializable attributes
+        """
+        return {
+            'grid': copy.deepcopy(self.grid),
+            'current_piece': copy.deepcopy(self.current_piece),
+            'game_over': self.game_over,
+            'score': self.score,
+            'steps': self.steps,
+            'board' : copy.deepcopy(self.board),
+            'last_move_time': copy.deepcopy(self.last_move_time),
+        }
+
+
+    def load_state(self, state):
+        """
+        Restore environment state from the dictionary
+        """
+        # self.grid = copy.deepcopy(state['grid'])
+        # self.current_piece = copy.deepcopy(state['current_piece'])
+        self.grid = copy.deepcopy(state['grid'])
+        self.current_piece = copy.deepcopy(state['current_piece'])
+        self.game_over = state['game_over']
+        self.score = state['score']
+        self.steps = state['steps']
+        self.board = copy.deepcopy(state['board'])
+        self.last_move_time = state['last_move_time']
+
+    def load_current_piece(self, cur_piece):
+        self.current_piece = copy.deepcopy(cur_piece)
+
     def step(self, action):
         """
         Step function will be all of the time from the new piece starting at the top, 
@@ -44,18 +79,27 @@ class TetrisEnv(Tetris):
 
         # Flatten the grid.
         self.prev_grid = self.convert_to_binary()
+        
+        action_meta = { 'CurPiece' :     self.current_piece['shape'],
+                        'ActionNum':     action,
+                        'NumRotate':     num_rotations,
+                        'NumHoriz':      num_movements,
+        }
 
+        unnecesary_movements = False
         # Rotate the piece.
         for _ in range(num_rotations):
             rotated_piece = self.rotate_piece(self.current_piece)
             if self.valid_move(rotated_piece, rotated_piece['x'], rotated_piece['y']):
                 self.current_piece = rotated_piece
+            else:
+                unnecesary_movements = True
+                print("Piece rotation failure")
 
         # Move left or right based on num_movements.
-        unnecesary_movements = False
         if num_movements != 0:
             direction = 1 if num_movements > 0 else -1
-            for _ in range(abs(num_movements)):
+            for _ in range(abs(num_movements)+1):
                 if self.valid_move(self.current_piece, self.current_piece['x'] + direction, self.current_piece['y']):
                     self.current_piece['x'] += direction
                 else:
@@ -87,7 +131,7 @@ class TetrisEnv(Tetris):
         self.grid = self.convert_to_binary()
         flattened_grid = [float(item) for row in self.grid for item in row]
 
-        # Convert the peice number to a NumPy array
+        # Convert the piece number to a NumPy array
         next_shape_enum = self.conf.SHAPES.index(self.current_piece['shape'])
         # Create a zero array of length equal to number of shapes
         one_hot_shape = [0] * len(self.conf.SHAPES)
@@ -117,11 +161,12 @@ class TetrisEnv(Tetris):
             done = True
             print(f'Ending game at max score of {self.score_cutoff}')
 
-        return next_state, reward, done, reward_meta
+        return next_state, reward, done, reward_meta, action_meta
 
 
     def reset(self):
-        """"""
+        """
+        """
         super().__init__()
         self.total_pieces = 0
 

@@ -28,8 +28,7 @@ class RewardCenter:
         self.grid = args[2]
         num_lines_cleared = args[3]
         total_pieces = args[4]
-        bad_movement_bool = [5]
-
+        bad_movement_bool = args[5]
         # Initialize the reward.
         reward = 0
         reward_meta = {}
@@ -37,8 +36,8 @@ class RewardCenter:
         # Add a quadratic reward for clearing lines to incentivize combos.
         r_string = 'lines_cleared'
         if self.setup[r_string][0]:
-            if num_lines_cleared > 0:
-                print(f'Num lines cleared: {num_lines_cleared}')
+            #if num_lines_cleared > 0:
+            #    print(f'Num lines cleared: {num_lines_cleared}')
             lines_cleared = self.setup[r_string][1]['mult'] * num_lines_cleared ** self.setup[r_string][1]['exp']
             reward_meta[r_string] = lines_cleared
             reward += lines_cleared
@@ -49,6 +48,13 @@ class RewardCenter:
             max_height = self.calc_max_height() * self.setup[r_string][1]['mult']
             reward_meta[r_string] = max_height
             reward += max_height
+
+        # Encourage keeping the max column height low.
+        r_string = 'max_height_diff'
+        if self.setup[r_string][0]:
+            max_height_diff = self.calc_max_height_diff() * self.setup[r_string][1]['mult']
+            reward_meta[r_string] = max_height_diff
+            reward += max_height_diff
 
         # Count the number of spaces the agent can't fill
         r_string = 'cells_blocked'
@@ -225,6 +231,25 @@ class RewardCenter:
             print(f'Max Height: {max(heights)}')
 
         return max(heights)
+
+
+    def calc_max_height_diff(self):
+        """
+        # Extract the height of the tallest column.
+        """
+        width = len(self.grid[0])
+        heights = [0] * width
+
+        for col in range(width):
+            for row in range(len(self.grid)):
+                if self.grid[row][col] == 1:
+                    heights[col] = len(self.grid) - row
+                    break
+
+        if self.print_reward_calc:
+            print(f'Max Height Diff: {max(heights) - min(heights)}')
+
+        return max(heights) - min(heights)
 
 
     def calculate_bumpiness(self):

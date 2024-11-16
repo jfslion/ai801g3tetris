@@ -109,14 +109,14 @@ class Tetris:
         pygame.draw.rect(
             self.screen, self.conf.GRAY, (0, 0, self.conf.SCREEN_WIDTH - 200, self.conf.SCREEN_HEIGHT), self.conf.BORDER_WIDTH)
 
-    def draw(self, reward_meta = None):
+    def draw(self, reward_meta = None, action_meta = None, delay = None):
         # Clear the screen
         self.screen.fill(self.conf.BLACK)
 
         # Draw the border
         self.draw_border()
 
-        # Draw the placed pieces on the grid
+        # Draw the placed pieces on the grid.
         for y, row in enumerate(self.board):
             for x, color in enumerate(row):
                 if color:
@@ -125,7 +125,7 @@ class Tetris:
                                       y * self.conf.BLOCK_SIZE,
                                       self.conf.BLOCK_SIZE - 1, self.conf.BLOCK_SIZE - 1))
 
-        # Draw the current falling piece
+        # Draw the current falling piece.
         for i, row in enumerate(self.current_piece['shape']):
             for j, cell in enumerate(row):
                 if cell:
@@ -135,26 +135,54 @@ class Tetris:
                                        i) * self.conf.BLOCK_SIZE,
                                       self.conf.BLOCK_SIZE - 1, self.conf.BLOCK_SIZE - 1))
 
+        # Initialize the text height.
+        text_height = 10
+        text_block_sep = 10*3
+
         # Display the Score.
         self.font = pygame.font.Font(None, 36)
         score_text = self.font.render(f'Score: {self.score}', True, self.conf.WHITE)
-        self.screen.blit(score_text, (self.conf.SCREEN_WIDTH - 190, 10))
+        self.screen.blit(score_text, (self.conf.SCREEN_WIDTH - 190, text_height))
+
+        if action_meta:
+            text_height += text_block_sep
+            self.font = pygame.font.Font(None, 18)
+            for indx, (key, val) in enumerate(action_meta.items()):
+                if isinstance(val, list):
+                    temp_text = f'{key}:'
+                    for num, line in enumerate(val):
+                        if num == 0:
+                            temp_text = f'{key}: {line}'
+                        else:
+                            temp_text = f'                     {line}'
+                        text_height += 10
+                        action_text = self.font.render(f'{temp_text}', True, self.conf.WHITE)
+                        self.screen.blit(action_text, (self.conf.SCREEN_WIDTH - 190, text_height))
+                else:
+                    action_text = self.font.render(f'{key}: {val}', True, self.conf.WHITE)
+                    text_height += 15
+                    self.screen.blit(action_text, (self.conf.SCREEN_WIDTH - 190, text_height))
 
         # Print the reward calcs if present.
         if reward_meta:
+            text_height += text_block_sep
             self.font = pygame.font.Font(None, 18)
             for indx, (rew, val) in enumerate(reward_meta.items()):
                 score_text = self.font.render(f'{rew}: {val:.2f}', True, self.conf.WHITE)
-                self.screen.blit(score_text, (self.conf.SCREEN_WIDTH - 190, 10*(indx+3)+(10*(indx+1))))
+                text_height += 15
+                self.screen.blit(score_text, (self.conf.SCREEN_WIDTH - 190, text_height))
 
-        # Draw game over message if the game has ended
+        # Draw game over message if the game has ended.
         if self.game_over:
             game_over_text = self.font.render("GAME OVER", True, self.conf.WHITE)
             self.screen.blit(game_over_text, (self.conf.SCREEN_WIDTH //
                              2 - 70, self.conf.SCREEN_HEIGHT // 2))
+            print(f'Final Score: {self.score}')
 
-        # Update the display
+        # Update the display.
         pygame.display.flip()
+        if delay:
+            self.delay_game(delay)
 
     def handle_continuous_movement(self):
         # Handle continuous key presses for smoother movement
@@ -178,6 +206,12 @@ class Tetris:
             if self.valid_move(self.current_piece, self.current_piece['x'], self.current_piece['y'] + 1):
                 self.current_piece['y'] += 1
                 self.last_move_time[pygame.K_DOWN] = current_time
+
+
+    def delay_game(self, d_time):
+        """
+        """
+        pygame.time.delay(d_time)
 
     def run(self):
         fall_time = 0

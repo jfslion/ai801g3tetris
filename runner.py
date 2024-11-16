@@ -2,16 +2,17 @@ import time
 import numpy as np
 from environment_tetris import TetrisEnv
 from agent_q_learning import QLearningAgent
+from agent_bfo import BruteForceAgent
 
 
 # Configuration Items
 runner_args = {
     'random_seed':          26392639,
     'score_cutoff'     :    400000,
-    'mode'             :    'random_watch', # 'user', 'random_watch', 'q_learning', 'dqn'
-    'print_reward_calc':    True,
+    'mode'             :    'bfo', # 'user', 'random_watch', 'q_learning', 'dqn', 'bfo'
+    'print_reward_calc':    False,
     'publish_rewards'  :    True,
-    'debug_grid'       :    True,
+    'debug_grid'       :    False,
     'render'           :    True,
     'render_pause_sec' :    1.0,
     }
@@ -20,13 +21,13 @@ runner_args = {
 rewards_config = {
     'lines_cleared'     : (True, {'mult': 100.0, 'exp': 2.0}),
     'max_height'        : (True, {'mult': -2.0}),
-    'cells_blocked'     : (True, {'mult': -1.0}),
+    'max_height_diff'   : (True, {'mult': -2.0}),
+    'cells_blocked'     : (True, {'mult': -10.0}),
     'bumpiness'         : (True, {'mult': -1.0}),
-    'total_pieces'      : (True, {'mult': 1.5}),
+    'total_pieces'      : (False, {'mult': 1.5}),
     'bad_movement'      : (True, {'const': -100.0}),
     'unoccupied_edges'  : (True, {'mult': 1.0, 'scale': 10.0}),
 }
-
 
 # Main function for runner execution.
 if __name__ == "__main__":
@@ -76,10 +77,20 @@ if __name__ == "__main__":
                 if print_reward:
                     print(f"Action: {action}, Reward: {reward}, Done: {done}")
 
+        case 'bfo':
+            """
+            """
+            agent = BruteForceAgent(env, False, False)
+            while not done:
+                done, reward_meta, action_meta = agent.step()
+            env.draw(reward_meta, action_meta, 100000)
+
         case 'dqt':
             """
             """
             pass
+
+    print(f'Final Score: {env.score}')
             # #TODO
             # num_episodes = 1000
             # for episode in range(num_episodes):
