@@ -9,7 +9,14 @@ class RewardCenter:
         self.publish_rewards = publish_rewards
         self.grid = []
         self.setup = reward_params
-
+        self.types = ['lines_cleared',
+                        'max_height',
+                        'max_height_diff',
+                        'cells_blocked',
+                        'bumpiness',
+                        'total_pieces',
+                        'bad_movement',
+                        'unoccupied_edges',]
 
     def calc_reward(self, *args):
         """
@@ -34,7 +41,7 @@ class RewardCenter:
         reward_meta = {}
 
         # Add a quadratic reward for clearing lines to incentivize combos.
-        r_string = 'lines_cleared'
+        r_string = self.types[0]
         if self.setup[r_string][0]:
             #if num_lines_cleared > 0:
             #    print(f'Num lines cleared: {num_lines_cleared}')
@@ -43,41 +50,41 @@ class RewardCenter:
             reward += lines_cleared
 
         # Encourage keeping the max column height low.
-        r_string = 'max_height'
+        r_string = self.types[1]
         if self.setup[r_string][0]:
             max_height = self.calc_max_height() * self.setup[r_string][1]['mult']
             reward_meta[r_string] = max_height
             reward += max_height
 
         # Encourage keeping the max column height low.
-        r_string = 'max_height_diff'
+        r_string = self.types[2]
         if self.setup[r_string][0]:
             max_height_diff = self.calc_max_height_diff() * self.setup[r_string][1]['mult']
             reward_meta[r_string] = max_height_diff
             reward += max_height_diff
 
         # Count the number of spaces the agent can't fill
-        r_string = 'cells_blocked'
+        r_string = self.types[3]
         if self.setup[r_string][0]:
             cells_blocked = self.calculate_unreachable_spaces() * self.setup[r_string][1]['mult']
             reward_meta[r_string] = cells_blocked
             reward += cells_blocked
 
         # Minimize the height difference across rows.
-        r_string = 'bumpiness'
+        r_string = self.types[4]
         if self.setup[r_string][0]:
             bumpiness = self.calculate_bumpiness() * self.setup[r_string][1]['mult']
             reward_meta[r_string] = cells_blocked
             reward += bumpiness
 
         # Add a reward for the total number of peices placed.
-        r_string = 'total_pieces'
+        r_string = self.types[5]
         if self.setup[r_string][0]:
             reward_meta[r_string] = total_pieces * self.setup[r_string][1]['mult']
             reward += total_pieces * self.setup[r_string][1]['mult']
 
         # Highly penalize unnecesary movements.
-        r_string = 'bad_movement'
+        r_string = self.types[6]
         if self.setup[r_string][0]:
             bad_movement_hit = 0
             if bad_movement_bool:
@@ -86,7 +93,7 @@ class RewardCenter:
             reward += bad_movement_hit
 
         # Minimize unoccupied edges.
-        r_string = 'unoccupied_edges'
+        r_string = self.types[7]
         if self.setup[r_string][0]:
             unoccupied_edges_val = 0
             unoccupied_edges_set = self.calc_edge_reward()

@@ -31,7 +31,8 @@ rewards_config = {
 
 # Main function for runner execution.
 if __name__ == "__main__":
-    """"""
+    """
+    """
     run_mode = runner_args['mode']
     env = TetrisEnv(runner_args, rewards_config)
 
@@ -83,7 +84,7 @@ if __name__ == "__main__":
             agent = BruteForceAgent(env, False, False)
             while not done:
                 done, reward_meta, action_meta = agent.step()
-            env.draw(reward_meta, action_meta, 100000)
+            env.draw(reward_meta, action_meta, 15000)
 
         case 'dqt':
             """
