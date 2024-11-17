@@ -64,7 +64,8 @@ rewards_config = {
 
 # Main function for runner execution.
 if __name__ == "__main__":
-    """"""
+    """
+    """
     run_mode = runner_args['mode']
     env = TetrisEnv(runner_args, rewards_config)
 
