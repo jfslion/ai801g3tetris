@@ -247,9 +247,6 @@ def calculate_reward(previous_grid, grid_before_line_clears, new_grid, lines_cle
     new_blocks_count, total_blocks_count, cumulative_sums = count_new_blocks(previous_grid, grid_before_line_clears)
     # reward += np.sum(cumulative_sums)
 
-    # add a qudratic reward for clearing lines to incentivize combos
-    if lines_cleared > 0:
-        print("Agent Cleared a Line!")
     lines_cleared_reward = 10 * lines_cleared ** 2
     reward += lines_cleared_reward
     # 10, 40, 90, 160
