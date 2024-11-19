@@ -3,7 +3,7 @@ import time
 import numpy as np
 from geneticalgorithm import geneticalgorithm as ga
 from tetris_without_pygame import TetrisEnvNoGame
-from agent_bfo import BruteForceAgent
+from agent_mdp import BruteForceAgent
 
 def mdp_agent_optimization(input_args):
     

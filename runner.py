@@ -2,7 +2,7 @@ import time
 import numpy as np
 from environment_tetris import TetrisEnv
 from agent_q_learning import QLearningAgent
-from agent_bfo import BruteForceAgent
+from agent_mdp import BruteForceAgent
 
 
 # Configuration Items
