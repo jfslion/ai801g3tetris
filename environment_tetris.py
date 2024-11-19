@@ -93,8 +93,9 @@ class TetrisEnv(Tetris):
             if self.valid_move(rotated_piece, rotated_piece['x'], rotated_piece['y']):
                 self.current_piece = rotated_piece
             else:
-                unnecesary_movements = True
-                print("Piece rotation failure")
+                #unnecesary_movements = True
+                if self.print_reward_calc:
+                    print("Piece rotation failure")
 
         # Move left or right based on num_movements.
         if num_movements != 0:

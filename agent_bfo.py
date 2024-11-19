@@ -50,7 +50,7 @@ class BruteForceAgent:
 
         if self.display_choice:
             self.env.draw(reward_meta, action_meta, 500)
-        print(f'\nStep num: {self.env.steps}')
-        print(f'Action Data: {action_meta}')
-        print(f'Reward Data: {reward_meta}')
+            print(f'\nStep num: {self.env.steps}')
+            print(f'Action Data: {action_meta}')
+            print(f'Reward Data: {reward_meta}')
         return done, reward_meta, action_meta
