@@ -20,11 +20,11 @@ runner_args = {
 # Rewards configuration items.
 rewards_config = {
     'lines_cleared'     : (True, {'mult': 100.0, 'exp': 2.0}),
-    'max_height'        : (True, {'mult': -2.0}),
-    'max_height_diff'   : (True, {'mult': -2.0}),
-    'cells_blocked'     : (True, {'mult': -10.0}),
-    'bumpiness'         : (True, {'mult': -1.0}),
-    'total_pieces'      : (False, {'mult': 1.5}),
+    'max_height'        : (True, {'mult': -1.0}),
+    'max_height_diff'   : (True, {'mult': -5.0}),
+    'cells_blocked'     : (True, {'mult': -20.0}),
+    'bumpiness'         : (True, {'mult': -3.0}),
+    'total_pieces'      : (False, {'mult': 1.0}),
     'bad_movement'      : (True, {'const': -100.0}),
     'unoccupied_edges'  : (True, {'mult': 1.0, 'scale': 10.0}),
 }

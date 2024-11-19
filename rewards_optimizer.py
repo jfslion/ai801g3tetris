@@ -1,7 +1,10 @@
 import random
 import numpy as np
 from reward_center import RewardCenter
-import math
+from environment_tetris import TetrisEnv
+import random
+import sys
+from agent_bfo import BruteForceAgent
 
 gen_files = True
 execute_optimizer = True
@@ -39,11 +42,40 @@ rewards_ranges = {
 }
 
 
-def get_run_matrix(rr: dict):
+def convert_to_rewards_dict(combo):
+    reward_combo = {}
+    counter = 0
+    for i, (key, val) in enumerate(rewards_ranges.items()):
+        if isinstance(val, dict):
+            tmp = {}
+            for i2, (key2, val2) in enumerate(val.items()):
+                tmp[key2] = combo[counter]
+                counter += 1
+            reward_combo[key] = (True, tmp)
+        else:
+            reward_combo[key] = (True, combo[counter])
+            counter += 1
+
+    return reward_combo
+
+
+def get_combinations(arrays):
+    if not arrays:
+        return [[]]
+    
+    result = []
+    for item in arrays[0]:
+        for combination in get_combinations(arrays[1:]):
+            result.append([item] + combination)
+    
+    return result
+
+
+def fetch_lists_from_dict(rr: dict):
     list_of_arrays = []
     for _, (key, val) in enumerate(rr.items()):
         if isinstance(val, dict):
-            tmp_list = get_run_matrix(val)
+            tmp_list = fetch_lists_from_dict(val)
             for alist in tmp_list:
                 list_of_arrays.append(alist)
         else:
@@ -70,12 +102,48 @@ def print_rewards_ranges(rr: dict, num_tabs = 1):
     print(f'Iter total_len: {total_len}')
     return total_len
 
+
+runner_args = {
+    'random_seed':          26392639,
+    'score_cutoff'     :    400000,
+    'mode'             :    'bfo', # 'user', 'random_watch', 'q_learning', 'dqn', 'bfo'
+    'print_reward_calc':    False,
+    'publish_rewards'  :    False,
+    'debug_grid'       :    False,
+    'render'           :    False,
+    'render_pause_sec' :    0.0,
+    }
+
+
 # Main function for rewards optimizer execution.
 if __name__ == "__main__":
     """
     """
-    if gen_files:
-        total_len = print_rewards_ranges(rewards_ranges)
-        run_mat = get_run_matrix(rewards_ranges)
+    total_len = print_rewards_ranges(rewards_ranges)
+    list_of_vals = fetch_lists_from_dict(rewards_ranges)
+    combinations = get_combinations(list_of_vals)
+    print(f'Total number of combinations: {len(combinations)}')
+    print(f'Total number of runs: {len(combinations)*num_replicates}')
+
+    random.seed(runner_args['random_seed'])
+    random_seeds = [random.randint(0, sys.maxsize) for x in range(num_replicates)]
+    highest_combo = 0
+    highest_indx = -1
+    for num, combo in enumerate(combinations):
+        combo_dict = convert_to_rewards_dict(combo)
+        combo_score = 0
+        for random_seed in random_seeds:
+            runner_args['random_seed'] = random_seed
+            env = TetrisEnv(runner_args, combo_dict)
+            agent = BruteForceAgent(env, False, False)
+            done = False
+            while not done:
+                done, _, _ = agent.step()
+            combo_score += env.score
+        avg_score = combo_score/num_replicates
+        print(f'Combo {num}/{len(combinations)}: Average Score = {avg_score:.2f}')
+        if (avg_score > highest_combo):
+            highest_combo = avg_score
+            highest_indx = num
     
-    print(f'Total number of runs: {math.factorial(total_len)}')
+    print(f'Best rewards combo had average score of {highest_combo}:\n{convert_to_rewards_dict(combinations[highest_indx])}')
