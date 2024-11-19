@@ -2,8 +2,8 @@ import time
 import numpy as np
 from environment_tetris import TetrisEnv
 from agent_q_learning import QLearningAgent
-from agent_bfo import BruteForceAgent
 import matplotlib.pyplot as plt
+from agent_mdp import BruteForceAgent
 
 def plot_cumulative_rewards(reward_history):
     steps = range(len(reward_history))

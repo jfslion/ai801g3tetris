@@ -4,7 +4,7 @@ from reward_center import RewardCenter
 from environment_tetris import TetrisEnv
 import random
 import sys
-from agent_bfo import BruteForceAgent
+from agent_mdp import BruteForceAgent
 
 gen_files = True
 execute_optimizer = True
