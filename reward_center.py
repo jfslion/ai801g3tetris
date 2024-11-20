@@ -8,6 +8,7 @@ class RewardCenter:
         self.print_reward_calc = print_calc
         self.publish_rewards = publish_rewards
         self.grid = []
+        self.prev_grid = []
         self.setup = reward_params
         self.types = ['lines_cleared',
                         'max_height',
@@ -40,68 +41,67 @@ class RewardCenter:
         reward = 0
         reward_meta = {}
 
-        # Add a quadratic reward for clearing lines to incentivize combos.
-        r_string = self.types[0]
-        if self.setup[r_string][0]:
-            #if num_lines_cleared > 0:
-            #    print(f'Num lines cleared: {num_lines_cleared}')
-            lines_cleared = self.setup[r_string][1]['mult'] * num_lines_cleared ** self.setup[r_string][1]['exp']
-            reward_meta[r_string] = lines_cleared
-            reward += lines_cleared
+        for key in self.setup:
 
-        # Encourage keeping the max column height low.
-        r_string = self.types[1]
-        if self.setup[r_string][0]:
-            max_height = self.calc_max_height() * self.setup[r_string][1]['mult']
-            reward_meta[r_string] = max_height
-            reward += max_height
+            # Add a quadratic reward for clearing lines to incentivize combos.
+            if key == "lines_cleared" and self.setup[key][0]:
+                lines_cleared = self.setup[key][1]['mult'] * (num_lines_cleared ** 2.0)
+                reward_meta[key] = lines_cleared
+                reward += lines_cleared
+                if self.print_reward_calc:
+                    print(f'Num lines cleared: {num_lines_cleared}')
 
-        # Encourage keeping the max column height low.
-        r_string = self.types[2]
-        if self.setup[r_string][0]:
-            max_height_diff = self.calc_max_height_diff() * self.setup[r_string][1]['mult']
-            reward_meta[r_string] = max_height_diff
-            reward += max_height_diff
+            # Encourage keeping the max column height low.
+            if key == "max_height" and self.setup[key][0]:
+                max_height = self.calc_max_height() * self.setup[key][1]['mult']
+                reward_meta[key] = max_height
+                reward += max_height
 
-        # Count the number of spaces the agent can't fill
-        r_string = self.types[3]
-        if self.setup[r_string][0]:
-            cells_blocked = self.calculate_unreachable_spaces() * self.setup[r_string][1]['mult']
-            reward_meta[r_string] = cells_blocked
-            reward += cells_blocked
+            # Encourage keeping the max column height differetial low.
+            if key == "max_height_diff" and self.setup[key][0]:
+                max_height_diff = self.calc_max_height_diff() * self.setup[key][1]['mult']
+                reward_meta[key] = max_height_diff
+                reward += max_height_diff
 
-        # Minimize the height difference across rows.
-        r_string = self.types[4]
-        if self.setup[r_string][0]:
-            bumpiness = self.calculate_bumpiness() * self.setup[r_string][1]['mult']
-            reward_meta[r_string] = cells_blocked
-            reward += bumpiness
+            # Count the number of spaces the agent can't fill
+            if key == "cells_blocked" and self.setup[key][0]:
+                cells_blocked = self.calculate_unreachable_spaces() * self.setup[key][1]['mult']
+                reward_meta[key] = cells_blocked
+                reward += cells_blocked
 
-        # Add a reward for the total number of peices placed.
-        r_string = self.types[5]
-        if self.setup[r_string][0]:
-            reward_meta[r_string] = total_pieces * self.setup[r_string][1]['mult']
-            reward += total_pieces * self.setup[r_string][1]['mult']
+            # Minimize the height difference across rows.
+            if key == "bumpiness" and self.setup[key][0]:
+                prev_bumpiness = self.calculate_bumpiness(self.prev_grid)
+                new_bumpiness = self.calculate_bumpiness(self.grid)
+                bumpiness = 0
+                if (new_bumpiness - prev_bumpiness) > 0:
+                    bumpiness = (new_bumpiness - prev_bumpiness) * self.setup[key][1]['mult']
+                if self.print_reward_calc:
+                    print(f'Num bumps added: {bumpiness}')
+                reward_meta[key] = bumpiness
+                reward += bumpiness
 
-        # Highly penalize unnecesary movements.
-        r_string = self.types[6]
-        if self.setup[r_string][0]:
-            bad_movement_hit = 0
-            if bad_movement_bool:
-                bad_movement_hit = self.setup[r_string][1]['const']
-            reward_meta[r_string] = bad_movement_hit
-            reward += bad_movement_hit
+            # Add a reward for the total number of peices placed.
+            if key == "total_pieces" and self.setup[key][0]:
+                reward_meta[key] = total_pieces * self.setup[key][1]['mult']
+                reward += total_pieces * self.setup[key][1]['mult']
 
-        # Minimize unoccupied edges.
-        r_string = self.types[7]
-        if self.setup[r_string][0]:
-            unoccupied_edges_val = 0
-            unoccupied_edges_set = self.calc_edge_reward()
-            if len(unoccupied_edges_set) > 0:
-                unoccupied_edges_val = self.setup[r_string][1]['scale'] / len(unoccupied_edges_set)
-                unoccupied_edges_val *= self.setup[r_string][1]['mult']
-            reward_meta['unoccupied_edges'] = unoccupied_edges_val
-            reward += unoccupied_edges_val
+            # Highly penalize unnecesary movements.
+            if key == "bad_movement" and self.setup[key][0]:
+                bad_movement_hit = 0
+                if bad_movement_bool:
+                    bad_movement_hit = self.setup[key][1]['const']
+                reward_meta[key] = bad_movement_hit
+                reward += bad_movement_hit
+
+            # Minimize unoccupied edges.
+            if key == "unoccupied_edges" and self.setup[key][0]:
+                unoccupied_edges_val = 0
+                unoccupied_edges_set = self.calc_edge_reward()
+                if len(unoccupied_edges_set) > 0:
+                    unoccupied_edges_val = len(unoccupied_edges_set) * self.setup[key][1]['mult']
+                reward_meta['unoccupied_edges'] = unoccupied_edges_val
+                reward += unoccupied_edges_val
 
         reward_meta['total'] = reward
         reward = np.float32(reward)
@@ -171,12 +171,11 @@ class RewardCenter:
 
     def calc_edge_reward(self):
         """
-        Determine the number of open edges on the ost recenly placed peice.
+        Determine the number of open edges on the most recenly placed peice.
         Do not count edges twice and consider the edge of the board as an occupied space.  
         """
         rows = len(self.grid)
         cols = len(self.grid[0])
-        edge_reward = 0
         unoccupied_spaces = set()
 
         def count_unoccupied_edges(row, col):
@@ -195,6 +194,9 @@ class RewardCenter:
                     # This is a newly placed piece.
                     count_unoccupied_edges(row, col)
 
+        if self.print_reward_calc:
+            print(f'Unoccupied edges: {len(unoccupied_spaces)}')
+
         return unoccupied_spaces
 
 
@@ -206,6 +208,7 @@ class RewardCenter:
         height = len(self.grid)
         width = len(self.grid[0])
         unreachable_count = 0
+        prev_unreachable_count = 0
 
         for col in range(width):
             found_piece = False
@@ -214,11 +217,19 @@ class RewardCenter:
                     found_piece = True
                 elif found_piece and self.grid[row][col] == 0:
                     unreachable_count += 1
+        
+        for col in range(width):
+            found_piece = False
+            for row in range(height):
+                if self.prev_grid[row][col] == 1:
+                    found_piece = True
+                elif found_piece and self.prev_grid[row][col] == 0:
+                    prev_unreachable_count += 1
 
         if self.print_reward_calc:
-            print(f'Number of unreachable spaces: {unreachable_count}')
+            print(f'Number of unreachable spaces: {unreachable_count - prev_unreachable_count}')
 
-        return unreachable_count
+        return unreachable_count - prev_unreachable_count
 
 
     def calc_max_height(self):
@@ -227,7 +238,7 @@ class RewardCenter:
         """
         width = len(self.grid[0])
         heights = [0] * width
-
+        x=2
         for col in range(width):
             for row in range(len(self.grid)):
                 if self.grid[row][col] == 1:
@@ -259,27 +270,24 @@ class RewardCenter:
         return max(heights) - min(heights)
 
 
-    def calculate_bumpiness(self):
+    def calculate_bumpiness(self, aGrid):
         """
         Sum up the difference in each of the heighs of the
         columns and the column next to it.
         """
-        width = len(self.grid[0])
+        width = len(aGrid[0])
         heights = [0] * width
 
         # Calculate the height of each column.
         for col in range(width):
-            for row in range(len(self.grid)):
-                if self.grid[row][col] != 0:
-                    heights[col] = len(self.grid) - row
+            for row in range(len(aGrid)):
+                if aGrid[row][col] != 0:
+                    heights[col] = len(aGrid) - row
                     break
 
         # Calculate the sum of differences between adjacent columns.
         bumpiness = 0
         for i in range(width - 1):
             bumpiness += abs(heights[i] - heights[i+1])
-
-        if self.print_reward_calc:
-            print(f'Bumpiness: {bumpiness}')
 
         return bumpiness

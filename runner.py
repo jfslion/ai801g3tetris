@@ -42,24 +42,24 @@ def plot_rewards(reward_history):
 runner_args = {
     'random_seed':          26392639,
     'score_cutoff'     :    400000,
-    'mode'             :    'bfo', # 'user', 'random_watch', 'q_learning', 'dqn', 'bfo'
+    'mode'             :    'mdp', # 'user', 'random_watch', 'q_learning', 'dqn', 'bfo'
     'print_reward_calc':    False,
     'publish_rewards'  :    True,
     'debug_grid'       :    False,
     'render'           :    True,
-    'render_pause_sec' :    1.0,
+    'render_pause_sec' :    3.0,
     }
 
 # Rewards configuration items.
 rewards_config = {
-    'lines_cleared'     : (True, {'mult': 100.0, 'exp': 2.0}),
-    'max_height'        : (True, {'mult': -1.0}),
-    'max_height_diff'   : (True, {'mult': -5.0}),
-    'cells_blocked'     : (True, {'mult': -20.0}),
-    'bumpiness'         : (True, {'mult': -3.0}),
+    'lines_cleared'     : (True, {'mult': 100.0}),
+    'max_height'        : (False, {'mult': -1.0}),
+    'max_height_diff'   : (True, {'mult': -8.0}),
+    'cells_blocked'     : (True, {'mult': -100.0}),
+    'bumpiness'         : (True, {'mult': -20}),
     'total_pieces'      : (False, {'mult': 1.0}),
-    'bad_movement'      : (True, {'const': -100.0}),
-    'unoccupied_edges'  : (True, {'mult': 1.0, 'scale': 10.0}),
+    'bad_movement'      : (False, {'const': -100.0}),
+    'unoccupied_edges'  : (True, {'mult': -10.0}),
 }
 
 # Main function for runner execution.
@@ -111,7 +111,7 @@ if __name__ == "__main__":
                 if print_reward:
                     print(f"Action: {action}, Reward: {reward}, Done: {done}")
 
-        case 'bfo':
+        case 'mdp':
             """
             """
             reward_history = []
