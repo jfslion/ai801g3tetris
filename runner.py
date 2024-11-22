@@ -3,7 +3,40 @@ import numpy as np
 from environment_tetris import TetrisEnv
 from agent_q_learning import QLearningAgent
 from agent_bfo import BruteForceAgent
+import matplotlib.pyplot as plt
 
+def plot_cumulative_rewards(reward_history):
+    steps = range(len(reward_history))
+    
+    plt.figure(figsize=(12, 8))
+    
+    for reward_type in reward_history[0].keys():
+        rewards = [step[reward_type] for step in reward_history]
+        cumulative_rewards = np.cumsum(rewards)
+        plt.plot(steps, cumulative_rewards, label=f'{reward_type}')
+    
+    plt.xlabel('Steps')
+    plt.ylabel('Cumulative Reward')
+    plt.title('Cumulative Rewards Over Time')
+    plt.legend()
+    plt.grid(True)
+    # plt.show()
+
+def plot_rewards(reward_history):
+    steps = range(len(reward_history))
+    
+    plt.figure(figsize=(12, 8))
+    
+    for reward_type in reward_history[0].keys():
+        rewards = [step[reward_type] for step in reward_history]
+        plt.plot(steps, rewards, label=reward_type)
+    
+    plt.xlabel('Steps')
+    plt.ylabel('Reward')
+    plt.title('Rewards Per Step')
+    plt.legend()
+    plt.grid(True)
+    # plt.show()
 
 # Configuration Items
 runner_args = {
@@ -80,10 +113,17 @@ if __name__ == "__main__":
         case 'bfo':
             """
             """
+            reward_history = []
             agent = BruteForceAgent(env, False, False)
             while not done:
                 done, reward_meta, action_meta = agent.step()
-            env.draw(reward_meta, action_meta, 100000)
+                reward_history.append(reward_meta.copy())
+
+            # plot the rewards from this episode
+            env.draw(reward_meta, action_meta, 1)
+            plot_rewards(reward_history)
+            plot_cumulative_rewards(reward_history)
+            plt.show()
 
         case 'dqt':
             """
