@@ -2,8 +2,8 @@ import json
 import time
 import numpy as np
 from geneticalgorithm import geneticalgorithm as ga
-from tetris_without_pygame import TetrisEnvNoGame
-from agent_mdp import BruteForceAgent
+from env_tetris_no_pygame import TetrisEnvNoGame
+from agent_mdp import AgentMDP
 
 def mdp_agent_optimization(input_args):
     
@@ -37,7 +37,7 @@ def mdp_agent_optimization(input_args):
     done = False
     state, reward = env.reset()
 
-    agent = BruteForceAgent(env, False, False)
+    agent = AgentMDP(env, False, False)
     while not done:
         done, reward_meta, action_meta = agent.step()
 

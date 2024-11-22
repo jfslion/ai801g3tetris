@@ -3,7 +3,7 @@ import time
 import copy
 
 # Define a brute-force agent
-class BruteForceAgent:
+class AgentMDP:
     def __init__(self, env, display_choice = False, display_each = False):
         self.env = env
         self.display_each = display_each

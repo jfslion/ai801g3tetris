@@ -1,9 +1,9 @@
 import time
 import numpy as np
-from environment_tetris import TetrisEnv
+from env_tetris import TetrisEnv
 from agent_q_learning import QLearningAgent
 import matplotlib.pyplot as plt
-from agent_mdp import BruteForceAgent
+from agent_mdp import AgentMDP
 
 def plot_cumulative_rewards(reward_history):
     steps = range(len(reward_history))
@@ -115,7 +115,7 @@ if __name__ == "__main__":
             """
             """
             reward_history = []
-            agent = BruteForceAgent(env, False, False)
+            agent = AgentMDP(env, False, False)
             while not done:
                 done, reward_meta, action_meta = agent.step()
                 reward_history.append(reward_meta.copy())

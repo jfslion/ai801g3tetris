@@ -22,7 +22,7 @@ from tkinter import filedialog
 
 import os
 
-from environment_tetris import TetrisEnv
+from env_tetris import TetrisEnv
 
 env = TetrisEnv()
 

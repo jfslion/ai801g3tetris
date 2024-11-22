@@ -1,11 +1,11 @@
 import random
 import numpy as np
 from reward_center import RewardCenter
-from environment_tetris import TetrisEnv
-from tetris_without_pygame import TetrisEnvNoGame
+from env_tetris import TetrisEnv
+from env_tetris_no_pygame import TetrisEnvNoGame
 import random
 import sys
-from agent_mdp import BruteForceAgent
+from agent_mdp import AgentMDP
 from joblib import Parallel, delayed
 import os
 import datetime
@@ -113,7 +113,7 @@ def process_combo(an_indx, a_combo, seeds, out_dir):
     for seed in seeds:
         run_args['random_seed'] = seed
         env = TetrisEnvNoGame(run_args, dict_combo)
-        agent = BruteForceAgent(env, False, False)
+        agent = AgentMDP(env, False, False)
         done = False
         while not done:
             done, _, _ = agent.step()
@@ -167,31 +167,29 @@ def publish_results(out_dir):
 if __name__ == "__main__":
     """
     """
-    #total_len = print_rewards_ranges(rewards_ranges)
-    # list_of_vals = fetch_lists_from_dict(rewards_ranges)
-    # combinations = get_combinations(list_of_vals)
-    # print(f'Total number of combinations: {len(combinations)}')
-    # print(f'Total number of runs: {len(combinations)*num_replicates}')
+    total_len = print_rewards_ranges(rewards_ranges)
+    list_of_vals = fetch_lists_from_dict(rewards_ranges)
+    combinations = get_combinations(list_of_vals)
+    print(f'Total number of combinations: {len(combinations)}')
+    print(f'Total number of runs: {len(combinations)*num_replicates}')
 
-    # timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # working_dir = os.path.dirname(os.path.abspath(__file__))
-    # directory_name = f'optimize_job_{timestamp}'
-    # new_directory = os.path.join(working_dir, directory_name)
-    # os.mkdir(new_directory)
-
-    # summary_file = os.path.join(new_directory, 'summary_file.txt') 
-    # with open(summary_file, 'w') as f:
-    #     for indx, combination in enumerate(combinations):
-    #         dict_combo = convert_to_rewards_dict(combination)
-    #         pprint.pprint(f'Combination {indx}:', stream = f)
-    #         pprint.pprint(dict_combo, stream = f)
-    #         pprint.pprint(" ", stream = f)
-
-    # random.seed(654684835)
-    # seeds = [random.randint(0, sys.maxsize) for x in range(num_replicates)]
-
-    # Parallel(n_jobs=-1)(delayed(process_combo)(indx, combo, seeds, new_directory) for indx, combo in enumerate(combinations))
-
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     working_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(working_dir, 'optimize_job_2024-11-20_18-53-00')
-    publish_results(data_dir)
+    directory_name = f'optimize_job_{timestamp}'
+    new_directory = os.path.join(working_dir, directory_name)
+    os.mkdir(new_directory)
+
+    summary_file = os.path.join(new_directory, 'summary_file.txt') 
+    with open(summary_file, 'w') as f:
+        for indx, combination in enumerate(combinations):
+            dict_combo = convert_to_rewards_dict(combination)
+            pprint.pprint(f'Combination {indx}:', stream = f)
+            pprint.pprint(dict_combo, stream = f)
+            pprint.pprint(" ", stream = f)
+
+    random.seed(654684835)
+    seeds = [random.randint(0, sys.maxsize) for x in range(num_replicates)]
+
+    Parallel(n_jobs=-1)(delayed(process_combo)(indx, combo, seeds, new_directory) for indx, combo in enumerate(combinations))
+
+    publish_results(new_directory)
