@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 
 gen_files = True
 execute_optimizer = True
-num_replicates = 5
+num_replicates = 30
 
 rewards_ranges = {
     'lines_cleared': 
