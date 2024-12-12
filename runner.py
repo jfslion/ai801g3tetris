@@ -42,8 +42,8 @@ def plot_rewards(reward_history):
 runner_args = {
     'random_seed':          26392639,
     'score_cutoff'     :    400000,
-    'mode'             :    'mdp', # 'user', 'random_watch', 'q_learning', 'dqn', 'bfo'
-    'print_reward_calc':    False,
+    'mode'             :    'mdp', # 'user', 'random_watch', 'q_learning', 'dqn'
+    'print_reward_calc':    True,
     'publish_rewards'  :    True,
     'debug_grid'       :    False,
     'render'           :    True,
@@ -53,12 +53,9 @@ runner_args = {
 # Rewards configuration items.
 rewards_config = {
     'lines_cleared'     : (True, {'mult': 100.0}),
-    'max_height'        : (False, {'mult': -1.0}),
-    'max_height_diff'   : (True, {'mult': -8.0}),
-    'cells_blocked'     : (True, {'mult': -100.0}),
-    'bumpiness'         : (True, {'mult': -20}),
-    'total_pieces'      : (False, {'mult': 1.0}),
-    'bad_movement'      : (False, {'const': -100.0}),
+    'max_height_diff'   : (True, {'mult': -2.0}),
+    'cells_blocked'     : (True, {'mult': -50.0}),
+    'bumpiness'         : (True, {'mult': -1.0}),
     'unoccupied_edges'  : (True, {'mult': -10.0}),
 }
 
@@ -115,7 +112,7 @@ if __name__ == "__main__":
             """
             """
             reward_history = []
-            agent = AgentMDP(env, False, False)
+            agent = AgentMDP(env, True, False)
             while not done:
                 done, reward_meta, action_meta = agent.step()
                 reward_history.append(reward_meta.copy())
@@ -126,31 +123,9 @@ if __name__ == "__main__":
             plot_cumulative_rewards(reward_history)
             plt.show()
 
-        case 'dqt':
+        case 'dqn':
             """
             """
             pass
 
     print(f'Final Score: {env.score}')
-            # #TODO
-            # num_episodes = 1000
-            # for episode in range(num_episodes):
-            #     state = env.reset()
-            #     state = agent.state_to_key(state)
-            #     total_reward = 0
-            #     done = False
-
-            #     while not done:
-            #         action = agent.choose_action(state)
-            #         next_state, reward, done, reward_meta = env.step(action)
-            #         if render:
-            #             env.draw(reward_meta)
-            #         next_state = agent.state_to_key(next_state)
-
-            #         agent.learn(state, action, reward, next_state, done)
-
-            #         state = next_state
-            #         total_reward += reward
-
-            #     print(f"Episode {
-            #           episode + 1}, Total Reward: {total_reward}, Epsilon: {agent.epsilon:.2f}")

@@ -11,10 +11,11 @@ import os
 import datetime
 import pprint
 import statistics
+import plotly.graph_objects as go
 
 gen_files = True
 execute_optimizer = True
-num_replicates = 10
+num_replicates = 30
 
 rewards_ranges = {
     'lines_cleared': 
@@ -149,10 +150,16 @@ def publish_results(out_dir):
     highest_ave_indx = -1
     highest_raw = 0
     highest_raw_indx = -1
-    for combo_num in combo_scores:
-        scores = combo_scores[combo_num]
+    combo_nums, max_array, min_array, mean_array = [], [], [], []
+    for combo_num, scores in combo_scores.items():
+        #scores = combo_scores[combo_num]
         ave_score = sum(scores)/len(scores)
         high = max(scores)
+        low = min(scores)
+        combo_nums.append(combo_num)
+        mean_array.append(ave_score)
+        max_array.append(high)
+        min_array.append(low)
         if (ave_score > highest_ave):
             highest_ave = ave_score
             highest_ave_indx = combo_num
@@ -160,6 +167,57 @@ def publish_results(out_dir):
             highest_raw = high
             highest_raw_indx = combo_num
     
+    scatter_mean = go.Scatter(
+        x = combo_nums,
+        y = mean_array,
+        mode = 'markers',
+        marker = dict(color = 'green'),
+        name = 'Mean Game Score'
+    )
+    scatter_high_ave_score = go.Scatter(
+        x = [highest_ave_indx],
+        y = [highest_ave],
+        name = 'Highest Avg Score',
+        mode = 'markers+text',
+        text = f'Combo {highest_ave_indx:.0f} | {highest_ave:.0f}',
+        marker = dict(color = 'green',
+                      symbol = 'star',
+                      size = 20,
+                      line = dict(color = 'gold',
+                                  width = 2))
+    )
+    scatter_max = go.Scatter(
+        x = combo_nums,
+        y = max_array,
+        mode = 'markers',
+        marker = dict(color = 'red'),
+        name = 'High Game Score'
+    )
+    scatter_high_raw_score = go.Scatter(
+        x = [highest_raw_indx],
+        y = [highest_raw],
+        name = 'Highest Raw Score',
+        mode = 'markers+text',
+        text = f'Combo {highest_raw_indx:.0f} | {highest_raw:.0f}',
+        marker = dict(color = 'red',
+                      symbol = 'star',
+                      size = 20,
+                      line = dict(color = 'gold',
+                                  width = 2))
+    )
+
+    fig = go.Figure(data = [scatter_mean, scatter_high_ave_score, scatter_max, scatter_high_raw_score],
+                    layout = dict(
+                        title = dict(text = '<b>Mean and High Score per Reward Combination</b>',
+                                     font = dict(size = 30),
+                                     x = 0.5,
+                                     xanchor = 'center'),
+                        xaxis = dict(title = dict(text = '<b>Combination Number</b>')),
+                        yaxis = dict(title = dict(text = '<b>Score</b>'))
+                    ))
+    fig.show()
+
+
     print(f'Highest Average Score: {highest_ave:.0f} | Combination: {highest_ave_indx}')
     print(f'Highest Game Score: {highest_raw:.0f} | Combination: {highest_raw_indx}')
 
@@ -167,6 +225,12 @@ def publish_results(out_dir):
 if __name__ == "__main__":
     """
     """
+    publish_only = True
+    if publish_only: 
+        results_dir = r''
+        publish_results(results_dir)
+        exit()
+
     total_len = print_rewards_ranges(rewards_ranges)
     list_of_vals = fetch_lists_from_dict(rewards_ranges)
     combinations = get_combinations(list_of_vals)
@@ -176,10 +240,10 @@ if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     working_dir = os.path.dirname(os.path.abspath(__file__))
     directory_name = f'optimize_job_{timestamp}'
-    new_directory = os.path.join(working_dir, directory_name)
-    os.mkdir(new_directory)
+    opt_dir = os.path.join(working_dir, directory_name)
+    os.mkdir(opt_dir)
 
-    summary_file = os.path.join(new_directory, 'summary_file.txt') 
+    summary_file = os.path.join(opt_dir, 'summary_file.txt') 
     with open(summary_file, 'w') as f:
         for indx, combination in enumerate(combinations):
             dict_combo = convert_to_rewards_dict(combination)
@@ -190,6 +254,6 @@ if __name__ == "__main__":
     random.seed(654684835)
     seeds = [random.randint(0, sys.maxsize) for x in range(num_replicates)]
 
-    Parallel(n_jobs=-1)(delayed(process_combo)(indx, combo, seeds, new_directory) for indx, combo in enumerate(combinations))
+    Parallel(n_jobs=-1)(delayed(process_combo)(indx, combo, seeds, opt_dir) for indx, combo in enumerate(combinations))
 
-    publish_results(new_directory)
+    publish_results(opt_dir)
